@@ -52,7 +52,7 @@ begin
     -- Feedback LFSR : taps bit3 et bit0 pour une séquence maximale sur 4 bits
     -- avec le décalage retenu ici.
     -- =========================================================================
-    feedback <= lfsr_reg(3) xor lfsr_reg(0);
+    feedback <= lfsr_reg(3) xor lfsr_reg(2);
 
     -- =========================================================================
     -- Process diviseur de fréquence : génère tick_1khz
@@ -89,7 +89,7 @@ begin
             end if;
 
             if tick_1khz = '1' and step_req = '1' then
-                lfsr_reg <= feedback & lfsr_reg(3 downto 1);
+                lfsr_reg <= lfsr_reg(2 downto 0) & feedback;
                 step_req <= '0';
             end if;
         end if;

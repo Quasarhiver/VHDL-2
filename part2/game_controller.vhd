@@ -1,12 +1,14 @@
 -- =============================================================================
 -- Module      : game_controller.vhd
 -- Description : Contrôleur principal du jeu LogiGame.
---               FSM : IDLE → NEW_ROUND → WAIT_RESPONSE → END_GAME
+--               FSM : IDLE → NEW_ROUND → WAIT_COLOR → WAIT_RESPONSE → END_GAME
 --
 --               IDLE         : Attente du bouton START (btn0)
---               NEW_ROUND    : Avance le LFSR, affiche la couleur sur LD3,
---                              lance le minuteur (1 cycle)
---               WAIT_RESPONSE: Attente de la réponse joueur ou timeout
+--               NEW_ROUND    : Avance le LFSR d'un pas
+--               WAIT_COLOR   : Attend >1 période 1kHz (100 001 cycles) pour que
+--                              le LFSR ait effectivement avancé et que la couleur
+--                              affichée sur LD3 soit stable avant de lancer le timer
+--               WAIT_RESPONSE: Lance le timer, attente de la réponse joueur ou timeout
 --               END_GAME     : Jeu terminé, affichage score final sur led0 RGB
 --
 --               LED_COLOR (3 bits) : R=100 / G=010 / B=001
@@ -19,9 +21,11 @@
 --                 Vert   : score = 15
 --                 Orange : score ∈ [7,14]  (R+G)
 --                 Rouge  : score ∈ [0,6]
+--
+
 -- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
 -- Cible       : Xilinx Artix-35T – Vivado / GHDL
--- Révision    : 1.0 – Avril 2026
+-- Révision    : 2.0 – Avril 2026
 -- =============================================================================
 
 library IEEE;
@@ -102,31 +106,35 @@ architecture Behavioral of game_controller is
     end component;
 
     -- =========================================================================
-    -- FSM
+    -- FSM : ajout de l'état WAIT_COLOR (fix bug 4)
     -- =========================================================================
-    type fsm_state is (IDLE, NEW_ROUND, WAIT_RESPONSE, END_GAME);
+    type fsm_state is (IDLE, NEW_ROUND, WAIT_COLOR, WAIT_RESPONSE, END_GAME);
     signal state : fsm_state := IDLE;
 
     -- =========================================================================
     -- Signaux internes
     -- =========================================================================
-    signal rnd_s       : STD_LOGIC_VECTOR(3 downto 0);
-    signal lfsr_en     : STD_LOGIC := '0';
-    signal timer_start : STD_LOGIC := '0';
-    signal timeout_s   : STD_LOGIC;
-    signal valid_hit_s : STD_LOGIC;
-    signal error_s     : STD_LOGIC;
-    signal score_s     : STD_LOGIC_VECTOR(3 downto 0);
-    signal gameover_s  : STD_LOGIC;
-    signal checker_en  : STD_LOGIC := '0';
-    signal led_color_r : STD_LOGIC_VECTOR(2 downto 0) := "100";
-    signal score_reset : STD_LOGIC := '0';
-    signal start_d     : STD_LOGIC := '0';
+    signal rnd_s          : STD_LOGIC_VECTOR(3 downto 0);
+    signal lfsr_en        : STD_LOGIC := '0';
+    signal timer_start    : STD_LOGIC := '0';
+    signal timeout_s      : STD_LOGIC;
+    signal valid_hit_s    : STD_LOGIC;
+    signal error_s        : STD_LOGIC;
+    signal score_s        : STD_LOGIC_VECTOR(3 downto 0);
+    signal gameover_s     : STD_LOGIC;
+    signal checker_en     : STD_LOGIC := '0';
+    signal led_color_r    : STD_LOGIC_VECTOR(2 downto 0) := "100";
+    signal score_reset    : STD_LOGIC := '0';
+    signal start_d        : STD_LOGIC := '0';
+
+    -- Compteur pour WAIT_COLOR : attend 100 001 cycles (> 1 période 1kHz)
+    -- pour garantir que le LFSR a avancé avant de lancer le timer (fix bug 4)
+    signal color_wait_cnt : integer range 0 to 100_001 := 0;
 
     -- =========================================================================
     -- Conversion LFSR → couleur (rnd[1:0] mod 3)
     -- =========================================================================
-    signal color_sel   : STD_LOGIC_VECTOR(1 downto 0);
+    signal color_sel : STD_LOGIC_VECTOR(1 downto 0);
 
 begin
 
@@ -173,12 +181,13 @@ begin
     process(CLK, RESET)
     begin
         if RESET = '1' then
-            state       <= IDLE;
-            lfsr_en     <= '0';
-            timer_start <= '0';
-            checker_en  <= '0';
-            score_reset <= '1';
-            start_d     <= '0';
+            state          <= IDLE;
+            lfsr_en        <= '0';
+            timer_start    <= '0';
+            checker_en     <= '0';
+            score_reset    <= '1';
+            start_d        <= '0';
+            color_wait_cnt <= 0;
 
         elsif rising_edge(CLK) then
             -- Signaux pulsés par défaut
@@ -200,11 +209,22 @@ begin
 
                 -- --------------------------------------------------------------
                 when NEW_ROUND =>
-                    -- Avancer le LFSR d'un pas pour le nouveau stimulus
-                    lfsr_en     <= '1';
-                    timer_start <= '1';   -- Lancer le minuteur
-                    checker_en  <= '0';
-                    state       <= WAIT_RESPONSE;
+                    -- Pulse LFSR enable : demande une avance au prochain tick 1kHz
+                    lfsr_en        <= '1';
+                    checker_en     <= '0';
+                    color_wait_cnt <= 0;
+                    -- Ne pas lancer le timer ici : attendre que le LFSR ait avancé
+                    state          <= WAIT_COLOR;
+
+
+                when WAIT_COLOR =>
+                    checker_en <= '0';
+                    if color_wait_cnt = 100_001 then
+                        timer_start <= '1';   -- couleur stable, on lance le timer
+                        state       <= WAIT_RESPONSE;
+                    else
+                        color_wait_cnt <= color_wait_cnt + 1;
+                    end if;
 
                 -- --------------------------------------------------------------
                 when WAIT_RESPONSE =>
@@ -213,9 +233,12 @@ begin
                         checker_en <= '0';
                         state      <= END_GAME;
                     elsif valid_hit_s = '1' then
-                        -- Bonne réponse : prochain round
                         checker_en <= '0';
-                        state      <= NEW_ROUND;
+                        if unsigned(score_s) = 14 then
+                            state <= END_GAME;
+                        else
+                            state <= NEW_ROUND;
+                        end if;
                     end if;
 
                 -- --------------------------------------------------------------
