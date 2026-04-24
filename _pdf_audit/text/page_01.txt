@@ -1,0 +1,15 @@
+Didier Meier
+didier.meier@intervenants.efrei.net
+202
+ 5
+-
+202
+ 6
+TE608 
+ -
+ Conception de 
+Systèmes 
+Numériques en VHDL 
+2
+Avril 
+2026

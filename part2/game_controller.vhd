@@ -12,10 +12,11 @@
 --               END_GAME     : Jeu terminé, affichage score final sur led0 RGB
 --
 --               LED_COLOR (3 bits) : R=100 / G=010 / B=001
---               La couleur est dérivée du LFSR : rnd[1:0] modulo 3
---                 00 ou 11 → Rouge
---                 01       → Vert
---                 10       → Bleu
+--               La couleur est dérivée de la valeur 4 bits du LFSR via
+--               un vrai modulo 3 :
+--                 0 → Rouge
+--                 1 → Vert
+--                 2 → Bleu
 --
 --               Led0 résultat final :
 --                 Vert   : score = 15
@@ -131,10 +132,13 @@ architecture Behavioral of game_controller is
     -- pour garantir que le LFSR a avancé avant de lancer le timer (fix bug 4)
     signal color_wait_cnt : integer range 0 to 100_001 := 0;
 
-    -- =========================================================================
-    -- Conversion LFSR → couleur (rnd[1:0] mod 3)
-    -- =========================================================================
-    signal color_sel : STD_LOGIC_VECTOR(1 downto 0);
+    function is_binary4(v : STD_LOGIC_VECTOR(3 downto 0)) return boolean is
+    begin
+        return ((v(3) = '0') or (v(3) = '1')) and
+               ((v(2) = '0') or (v(2) = '1')) and
+               ((v(1) = '0') or (v(1) = '1')) and
+               ((v(0) = '0') or (v(0) = '1'));
+    end function;
 
 begin
 
@@ -160,19 +164,24 @@ begin
                   VALID_HIT => valid_hit_s, ERROR => error_s);
 
     -- =========================================================================
-    -- Dérivation couleur depuis LFSR (rnd[1:0] mod 3)
-    --   "00" ou "11" → Rouge (100)
-    --   "01"         → Vert  (010)
-    --   "10"         → Bleu  (001)
+    -- Dérivation couleur depuis LFSR (valeur 4 bits modulo 3)
+    --   0 → Rouge (100)
+    --   1 → Vert  (010)
+    --   2 → Bleu  (001)
     -- =========================================================================
-    color_sel <= rnd_s(1 downto 0);
-    process(color_sel)
+    process(rnd_s)
+        variable color_idx : integer range 0 to 2;
     begin
-        case color_sel is
-            when "01"   => led_color_r <= "010";   -- Vert
-            when "10"   => led_color_r <= "001";   -- Bleu
-            when others => led_color_r <= "100";   -- Rouge
-        end case;
+        if is_binary4(rnd_s) then
+            color_idx := to_integer(unsigned(rnd_s)) mod 3;
+            case color_idx is
+                when 1      => led_color_r <= "010";   -- Vert
+                when 2      => led_color_r <= "001";   -- Bleu
+                when others => led_color_r <= "100";   -- Rouge
+            end case;
+        else
+            led_color_r <= "100";
+        end if;
     end process;
 
     -- =========================================================================

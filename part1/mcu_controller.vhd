@@ -96,7 +96,10 @@ architecture Behavioral of mcu_controller is
     -- Cycle 2 : Routage S -> MC1  (MC1 = A + B)
     -- Cycle 3 : Charger MC1[3:0] dans BufferB et préparer XOR
     -- Cycle 4 : Routage S[3:0] -> BufferB[3:0] et préparer notB
-    -- Cycle 5 : Routage S -> MC1 et affichage MC1
+    -- Cycle 5 : Routage S[3:0] -> BufferA[3:0] (XNOR) avec nibble haut conservé à 0
+    -- Cycle 6 : Routage S[3:0]=0 -> BufferB[3:0] et préparer OR
+    -- Cycle 7 : Routage S -> MC1 pour obtenir explicitement "0000" & XNOR
+    -- Cycle 8 : Affichage MC1
     --
     -- PROGRAMME 2 : RESOUT3 = (A0 AND B1) OR (A1 AND B0)  sur bit 0
     -- -------------------------------------------------------------------------
@@ -174,16 +177,17 @@ architecture Behavioral of mcu_controller is
         6  => "0000" & "0000" & "01",
         7  => "0000" & "0000" & "01",
         -- ==============================================================
-        -- PROGRAMME 1 : RESOUT2 = (A+B) XNOR A  4LSBs (adresses 8-14)
+        -- PROGRAMME 1 : RESOUT2 = (A+B) XNOR A  4LSBs (adresses 8-16)
         -- ==============================================================
         8  => "0000" & "0000" & "00",  -- BufferA <- A_IN
         9  => "1001" & "0001" & "00",  -- BufferB <- B_IN ; préparer ADD
         10 => "0000" & "0110" & "00",  -- MC1 <- A + B
         11 => "0111" & "1010" & "00",  -- BufferB <- MC1[3:0] ; préparer XOR
         12 => "0100" & "0100" & "00",  -- BufferB <- A xor (A+B) ; préparer notB
-        13 => "0000" & "0110" & "00",  -- MC1 <- not(BufferB)
-        14 => "0000" & "0000" & "01",  -- Affichage MC1, maintien sûr en DONE
-        15 => "0000" & "0000" & "01",
+        13 => "0000" & "0010" & "00",  -- BufferA <- XNOR[3:0] ; prépare NOP
+        14 => "0110" & "0100" & "00",  -- BufferB <- 0 ; préparer OR(BufferA, BufferB)
+        15 => "0000" & "0110" & "00",  -- MC1 <- "0000" & XNOR
+        16 => "0000" & "0111" & "01",  -- Affichage MC1, route NOP vers MC2
         -- ==============================================================
         -- PROGRAMME 2 : RESOUT3 = (A0∧B1) ∨ (A1∧B0) sur bit[0] (adresses 20-32)
         -- ==============================================================
@@ -208,10 +212,17 @@ architecture Behavioral of mcu_controller is
     -- =========================================================================
     -- Signaux FSM et compteur PC
     -- =========================================================================
+    constant PROG0_BASE : unsigned(6 downto 0) := to_unsigned(0,  7);
+    constant PROG0_END  : unsigned(6 downto 0) := to_unsigned(3,  7);
+    constant PROG1_BASE : unsigned(6 downto 0) := to_unsigned(8,  7);
+    constant PROG1_END  : unsigned(6 downto 0) := to_unsigned(16, 7);
+    constant PROG2_BASE : unsigned(6 downto 0) := to_unsigned(20, 7);
+    constant PROG2_END  : unsigned(6 downto 0) := to_unsigned(32, 7);
+
     signal state    : fsm_state := IDLE;
     signal pc       : unsigned(6 downto 0) := (others => '0');  -- Program Counter 7 bits
-    signal prog_base: unsigned(6 downto 0) := (others => '0');  -- Adresse de base du programme
-    signal prog_end : unsigned(6 downto 0) := (others => '0');  -- Adresse de fin (DONE instr)
+    signal prog_base: unsigned(6 downto 0) := PROG0_BASE;  -- Adresse de base (latchée sur START)
+    signal prog_end : unsigned(6 downto 0) := PROG0_END;   -- Adresse de fin  (latchée sur START)
     signal instr    : STD_LOGIC_VECTOR(9 downto 0);
     signal start_d  : STD_LOGIC := '0';  -- Mémorisation front START
 
@@ -226,19 +237,6 @@ begin
     SELOUT   <= instr(1 downto 0);
 
     -- =========================================================================
-    -- Calcul adresse de base et fin selon SEL_PROG
-    -- =========================================================================
-    process(SEL_PROG)
-    begin
-        case SEL_PROG is
-            when "00"   => prog_base <= to_unsigned(0,  7); prog_end <= to_unsigned(3,  7);
-            when "01"   => prog_base <= to_unsigned(8,  7); prog_end <= to_unsigned(14, 7);
-            when "10"   => prog_base <= to_unsigned(20, 7); prog_end <= to_unsigned(32, 7);
-            when others => prog_base <= to_unsigned(0,  7); prog_end <= to_unsigned(3,  7);
-        end case;
-    end process;
-
-    -- =========================================================================
     -- FSM séquenceur principal
     -- =========================================================================
     process(CLK, RESET)
@@ -246,6 +244,8 @@ begin
         if RESET = '1' then
             state   <= IDLE;
             pc      <= (others => '0');
+            prog_base <= PROG0_BASE;
+            prog_end  <= PROG0_END;
             DONE    <= '0';
             start_d <= '0';
 
@@ -258,7 +258,16 @@ begin
                 when IDLE =>
                     DONE <= '0';
                     if START = '1' and start_d = '0' then  -- front montant
-                        pc    <= prog_base;
+                        case SEL_PROG is
+                            when "00" =>
+                                prog_base <= PROG0_BASE; prog_end <= PROG0_END; pc <= PROG0_BASE;
+                            when "01" =>
+                                prog_base <= PROG1_BASE; prog_end <= PROG1_END; pc <= PROG1_BASE;
+                            when "10" =>
+                                prog_base <= PROG2_BASE; prog_end <= PROG2_END; pc <= PROG2_BASE;
+                            when others =>
+                                prog_base <= PROG0_BASE; prog_end <= PROG0_END; pc <= PROG0_BASE;
+                        end case;
                         state <= RUN;
                     end if;
 
@@ -276,7 +285,16 @@ begin
                     DONE <= '1';
                     -- Reste dans DONE jusqu'au prochain start
                     if START = '1' and start_d = '0' then
-                        pc    <= prog_base;
+                        case SEL_PROG is
+                            when "00" =>
+                                prog_base <= PROG0_BASE; prog_end <= PROG0_END; pc <= PROG0_BASE;
+                            when "01" =>
+                                prog_base <= PROG1_BASE; prog_end <= PROG1_END; pc <= PROG1_BASE;
+                            when "10" =>
+                                prog_base <= PROG2_BASE; prog_end <= PROG2_END; pc <= PROG2_BASE;
+                            when others =>
+                                prog_base <= PROG0_BASE; prog_end <= PROG0_END; pc <= PROG0_BASE;
+                        end case;
                         DONE  <= '0';
                         state <= RUN;
                     end if;

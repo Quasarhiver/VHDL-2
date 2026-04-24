@@ -1,0 +1,65 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 22
+Génération d’un générateur de 
+séquence pseudo aléatoire
+▪
+ 1
+ère 
+partie : 
+•
+ Synthétiser le générateur de la séquence pseudo
+-
+aléatoire directement en VHDL avant de le tester :
+✓
+ Fréquence de génération de la séquence :
+o
+ F
+ LFSR  
+= 1 kHz
+•
+ Spécifications : 
+✓
+ Entrée 
+clk 
+: horloge principale (100 MHz)
+✓
+ Entrée reset : réinitialisation du registre à une valeur initiale non nulle «
+1011
+»
+✓
+ Entrée enable : active l’évolution du LFSR à chaque front montant
+✓
+ Sortie 
+rnd 
+: vecteur de 4 bits représentant la valeur pseudo
+-
+aléatoire courante
+•
+ Fonctionnement attendu : 
+✓
+ Le LFSR implémente le polynôme X ⁴ 
++ X³ + 1
+✓
+ Feedback : XOR entre les bits 3 et 2
+✓
+ La séquence doit parcourir 15 états avant de boucler
+•
+ Résultat attendu
+✓
+ À chaque cycle d’horloge avec enable = '1', une nouvelle valeur pseudo
+-
+aléatoire est produite.
+Avril 
+2026

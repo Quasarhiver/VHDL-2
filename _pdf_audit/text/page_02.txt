@@ -1,0 +1,21 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io
+LogiGame 
+Mise en œuvre ludique d’un cœur de contrôleur 
+sur FPGA
+2
+Description du projet
+Avril 
+2026

@@ -1,0 +1,33 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 21
+Génération d’un générateur de 
+séquence pseudo aléatoire
+▪
+ Objectif :
+•
+ Synthétiser puis simuler un registre à décalage à rétroaction linéaire (LFSR) sur 4 bits basé sur le 
+polynôme :
+X
+4 
++ X
+ 3 
++ 1
+•
+ Ce LFSR génère une valeur pseudo
+ -
+aléatoire à chaque exécution, qui pourra être utilisée comme 
+stimulus couleur (ex : modulo 3 pour obtenir rouge, vert ou bleu).
+Avril 
+2026

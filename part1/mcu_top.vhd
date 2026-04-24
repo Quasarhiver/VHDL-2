@@ -144,7 +144,7 @@ begin
             RESOUT   => resout_i,
             SROUTL   => sroutl_i,
             SROUTR   => sroutr_i
-        )
+        );
 -- =========================================================================
     -- Mapping des sorties LEDs
     -- RESOUT[7:0] → rouge (8 leds)

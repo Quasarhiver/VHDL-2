@@ -1,0 +1,51 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 30
+Synthèse du contrôleur de jeu 
+(automate à états finis)
+▪
+ Objectif :
+•
+ Réaliser un contrôleur de jeu VHDL pilotant la logique globale de 
+LogiGame 
+:
+✓
+ Génération pseudo
+-
+aléatoire du stimulus
+✓
+ Lancement du 
+timer 
+en fonction du niveau de difficulté
+✓
+ Vérification de la réponse du joueur
+✓
+ Incrément du score ou fin de partie
+▪
+ Composants utilisés :
+✓
+ LFSR4 : générateur pseudo
+ -
+aléatoire (stimulus couleur)
+✓
+ DifficultyTimer 
+: minuterie avec niveau SW[3:2]
+✓
+ ScoreCounter 
+: compteur de score avec signal de fin
+✓
+ ResponseChecker  
+: vérification bouton/couleur/temps
+Avril 
+2026

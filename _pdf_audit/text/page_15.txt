@@ -1,0 +1,57 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 15
+Les instructions à coder pour tests 
+et validations
+▪
+ Vous aurez à implémenter 3 fonctions spécifiques dans la mémoire à instructions : 
+1) RES_OUT_1 = (A 
+mult
+. B) 
+(RES_OUT_1 sur 8 bits)
+2) RES_OUT_2 = (A 
+ add
+. B) 
+xnor 
+A 
+(
+xnor 
+sur les 4 bits de poids faibles 
+– 
+RES_OUT_2 sur 4 bits)
+3) RES_OUT_3 = (A
+ 0 
+and B
+1
+) or (A
+1 
+and B
+0
+) 
+(RES_OUT_3 sur le bit de poids faible)
+▪
+ On considère les entrées A, B, SR_IN_L et SR_IN_R stables toute la durée du calcul :
+•
+ Ce qui, en réalité, ne sera pas toujours le cas…
+▪
+ La sortie RES_OUT restera à 0 tant que le résultat final du calcul ne sera pas 
+disponible (pas de résultats intermédiaires sur RES_OUT)
+•
+ Une fois le résultat calculé, il sera maintenu sur la sortie RES_OUT jusqu’au prochain lancement du 
+calcul
+✓
+ Pour les tests sur la carte FPGA, un signal spécifique sera également passé de 0 (calcul en cours) à 1 
+(calcul terminé) pour indiquer que le résultat RES_OUT est disponible
+Avril 
+2026

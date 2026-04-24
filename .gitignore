@@ -1,0 +1,6 @@
+sim/
+tools/
+scripts/
+browser-state-*.json
+browser-state-*-fingerprint.json
+work-obj*.cf

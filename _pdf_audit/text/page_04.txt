@@ -1,0 +1,31 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 4
+Objectifs pédagogiques
+▪
+ À travers le projet 
+LogiGame
+, vous êtes amenés à concevoir un cœur de 
+microcontrôleur en VHDL qui sera utilisé pour exécuter un jeu interactif. 
+▪
+ Ce 
+jeu met en œuvre des notions fondamentales : 
+datapath
+, logique séquentielle, 
+mémoires, contrôleur d'instructions, temporisation et interface avec des éléments 
+physiques de la carte FPGA (
+ LEDs
+ , boutons, switches).
+Avril 
+2026

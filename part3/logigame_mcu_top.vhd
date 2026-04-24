@@ -1,22 +1,18 @@
 -- =============================================================================
--- Module      : logigame_mcu_top.vhd  (Arty_Digilent_TopLevel – Partie 3)
+-- Module      : logigame_mcu_top.vhd  (Arty_Digilent_TopLevel - Partie 3)
 -- Description : Top-level final du projet LogiGame.
---               Remplace le LFSR VHDL natif de la Partie 2 par le cœur MCU
---               comme générateur pseudo-aléatoire.
---               Le MCU exécute un programme de génération pseudo-aléatoire via
---               des instructions UAL (décalages + XOR + OR). Une nouvelle valeur
---               n'est produite que lorsqu'une nouvelle manche le demande.
+--               Remplace le LFSR VHDL natif de la Partie 2 par le coeur MCU
+--               comme generateur pseudo-aleatoire.
 --
 --               Architecture :
---                 mcu_lfsr_program  → lance une séquence d'instructions à la demande
---                 datapath          → exécute les instructions, MC1 = état LFSR
---                 game_controller_mcu → FSM jeu utilisant RESOUT du datapath
---                                      comme source de couleur aléatoire
+--                 mcu_lfsr_program -> lance une sequence d'instructions a la demande
+--                 datapath         -> execute les instructions, MC1 = etat LFSR
+--                 FSM jeu          -> derive la couleur via un vrai modulo 3
 --
---               La valeur pseudo-aléatoire est issue de RESOUT[3:0] du datapath.
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado
--- Révision    : 1.0 – Avril 2026
+
+-- Auteur      : Projet LogiGame - TE608 EFREI 2025-2026
+-- Cible       : Xilinx Artix-35T - Vivado
+-- Revision    : 2.0 - Avril 2026
 -- =============================================================================
 
 library IEEE;
@@ -110,45 +106,49 @@ architecture Behavioral of Arty_Digilent_TopLevel is
     -- Signaux
     -- =========================================================================
     signal clk_i      : STD_LOGIC;
+    signal clk_mcu    : STD_LOGIC := '0';
     signal reset_i    : STD_LOGIC;
+    signal mcu_divcnt : integer range 0 to 49_999 := 0;
 
-    -- MCU → Datapath
     signal selfct_s   : STD_LOGIC_VECTOR(3 downto 0);
     signal selroute_s : STD_LOGIC_VECTOR(3 downto 0);
     signal selout_s   : STD_LOGIC_VECTOR(1 downto 0);
     signal mcu_done   : STD_LOGIC;
-    signal mcu_start  : STD_LOGIC;
+    signal mcu_done_meta : STD_LOGIC := '0';
+    signal mcu_done_sync : STD_LOGIC := '0';
+    signal mcu_start  : STD_LOGIC := '0';
 
-    -- Datapath → sortie
     signal resout_s   : STD_LOGIC_VECTOR(7 downto 0);
-
-    -- Couleur dérivée du LFSR MCU (RESOUT[1:0] mod 3)
     signal led_color_s: STD_LOGIC_VECTOR(2 downto 0);
-    signal color_sel  : STD_LOGIC_VECTOR(1 downto 0);
 
-    -- Timer
     signal timer_start: STD_LOGIC;
     signal timeout_s  : STD_LOGIC;
 
-    -- Score
     signal valid_hit_s: STD_LOGIC;
     signal error_s    : STD_LOGIC;
     signal score_s    : STD_LOGIC_VECTOR(3 downto 0);
     signal gameover_s : STD_LOGIC;
     signal score_rst  : STD_LOGIC;
 
-    -- Checker
     signal checker_en : STD_LOGIC;
 
-    -- FSM jeu
+    -- FSM
     type fsm_t is (IDLE, WAIT_MCU, WAIT_RESPONSE, END_GAME);
-    signal state       : fsm_t := IDLE;
+    signal state       : fsm_t  := IDLE;
     signal btn0_d      : STD_LOGIC := '0';
     signal start_pulse : STD_LOGIC := '0';
 
-    -- LEDs
+    -- LEDs internes
     signal led3_r_s, led3_g_s, led3_b_s : STD_LOGIC;
     signal led0_r_s, led0_g_s, led0_b_s : STD_LOGIC;
+
+    function is_binary4(v : STD_LOGIC_VECTOR(3 downto 0)) return boolean is
+    begin
+        return ((v(3) = '0') or (v(3) = '1')) and
+               ((v(2) = '0') or (v(2) = '1')) and
+               ((v(1) = '0') or (v(1) = '1')) and
+               ((v(0) = '0') or (v(0) = '1'));
+    end function;
 
 begin
 
@@ -156,9 +156,7 @@ begin
     reset_i <= btn(0);
 
     -- =========================================================================
-    -- BTN0 sert à la fois de reset et de lancement :
-    -- - bouton appuyé  : reset actif
-    -- - bouton relâché : pulse START d'un cycle
+    -- BTN0 : reset quand appuye, pulse START au relachement
     -- =========================================================================
     process(clk_i)
     begin
@@ -172,65 +170,118 @@ begin
     end process;
 
     -- =========================================================================
-    -- MCU LFSR Program
+    -- Horloge MCU 1 kHz derivee de CLK100MHZ
     -- =========================================================================
-    U_MCU : mcu_lfsr_program
-        port map (CLK => clk_i, RESET => reset_i,
-                  START => mcu_start,
-                  SELFCT => selfct_s, SELROUTE => selroute_s,
-                  SELOUT => selout_s, DONE => mcu_done);
-
-    -- =========================================================================
-    -- Datapath : A_IN et B_IN non utilisés dans le programme LFSR
-    -- Initialisation MC1 = 1011 se fait via un programme init ou le reset
-    -- (Le reset met tout à 0; on initialise MC1 via les premières instructions)
-    -- =========================================================================
-    U_DP : datapath
-        port map (CLK => clk_i, RESET => reset_i,
-                  A_IN => "1011", B_IN => "1011",  -- Valeur init LFSR
-                  SRINL => '0', SRINR => '0',
-                  SELFCT => selfct_s, SELROUTE => selroute_s, SELOUT => selout_s,
-                  RESOUT => resout_s, SROUTL => open, SROUTR => open);
-
-    -- =========================================================================
-    -- Dérivation couleur depuis RESOUT[1:0]
-    -- =========================================================================
-    color_sel  <= resout_s(1 downto 0);
-    process(color_sel)
+    process(clk_i, reset_i)
     begin
-        case color_sel is
-            when "01"   => led_color_s <= "010";
-            when "10"   => led_color_s <= "001";
-            when others => led_color_s <= "100";
-        end case;
+        if reset_i = '1' then
+            mcu_divcnt <= 0;
+            clk_mcu    <= '0';
+        elsif rising_edge(clk_i) then
+            if mcu_divcnt = 49_999 then
+                mcu_divcnt <= 0;
+                clk_mcu    <= not clk_mcu;
+            else
+                mcu_divcnt <= mcu_divcnt + 1;
+            end if;
+        end if;
     end process;
 
     -- =========================================================================
-    -- Timer difficulté
+    -- Synchronisation du DONE MCU vers le domaine 100 MHz
+    -- =========================================================================
+    process(clk_i, reset_i)
+    begin
+        if reset_i = '1' then
+            mcu_done_meta <= '0';
+            mcu_done_sync <= '0';
+        elsif rising_edge(clk_i) then
+            mcu_done_meta <= mcu_done;
+            mcu_done_sync <= mcu_done_meta;
+        end if;
+    end process;
+
+    -- =========================================================================
+    -- MCU LFSR Program
+    -- =========================================================================
+    U_MCU : mcu_lfsr_program
+        port map (CLK => clk_mcu, RESET => reset_i,
+                  START    => mcu_start,
+                  SELFCT   => selfct_s,
+                  SELROUTE => selroute_s,
+                  SELOUT   => selout_s,
+                  DONE     => mcu_done);
+
+    -- =========================================================================
+    -- Datapath : A_IN="1011" fournit le seed pour l'initialisation
+    -- =========================================================================
+    U_DP : datapath
+        port map (CLK => clk_mcu, RESET => reset_i,
+                  A_IN     => "1011", B_IN => "1011",
+                  SRINL    => '0',    SRINR => '0',
+                  SELFCT   => selfct_s,
+                  SELROUTE => selroute_s,
+                  SELOUT   => selout_s,
+                  RESOUT   => resout_s,
+                  SROUTL   => open,
+                  SROUTR   => open);
+
+    -- =========================================================================
+    -- Derivation couleur depuis la valeur pseudo-aleatoire (modulo 3)
+    --   0 -> Rouge (100)
+    --   1 -> Vert  (010)
+    --   2 -> Bleu  (001)
+    -- =========================================================================
+    process(resout_s)
+        variable color_idx : integer range 0 to 2;
+    begin
+        if is_binary4(resout_s(3 downto 0)) then
+            color_idx := to_integer(unsigned(resout_s(3 downto 0))) mod 3;
+            case color_idx is
+                when 1      => led_color_s <= "010";
+                when 2      => led_color_s <= "001";
+                when others => led_color_s <= "100";
+            end case;
+        else
+            led_color_s <= "100";
+        end if;
+    end process;
+
+    -- =========================================================================
+    -- Timer difficulte
     -- =========================================================================
     U_TIMER : difficulty_timer
-        port map (CLK => clk_i, RESET => reset_i, START => timer_start,
-                  SW_LEVEL => sw(3 downto 2), TIMEOUT => timeout_s);
+        port map (CLK => clk_i, RESET => reset_i,
+                  START    => timer_start,
+                  SW_LEVEL => sw(3 downto 2),
+                  TIMEOUT  => timeout_s);
 
     -- =========================================================================
     -- Score
     -- =========================================================================
     U_SCORE : score_counter
         port map (CLK => clk_i, RESET => score_rst,
-                  VALID_HIT => valid_hit_s, ERROR => error_s,
-                  SCORE => score_s, GAME_OVER => gameover_s);
+                  VALID_HIT => valid_hit_s,
+                  ERROR     => error_s,
+                  SCORE     => score_s,
+                  GAME_OVER => gameover_s);
 
     -- =========================================================================
     -- Response Checker
     -- =========================================================================
     U_CHECK : response_checker
-        port map (CLK => clk_i, RESET => reset_i, ENABLE => checker_en,
-                  TIMEOUT => timeout_s, LED_COLOR => led_color_s,
-                  BTN_R => btn(3), BTN_G => btn(2), BTN_B => btn(1),
-                  VALID_HIT => valid_hit_s, ERROR => error_s);
+        port map (CLK => clk_i, RESET => reset_i,
+                  ENABLE    => checker_en,
+                  TIMEOUT   => timeout_s,
+                  LED_COLOR => led_color_s,
+                  BTN_R     => btn(3),
+                  BTN_G     => btn(2),
+                  BTN_B     => btn(1),
+                  VALID_HIT => valid_hit_s,
+                  ERROR     => error_s);
 
     -- =========================================================================
-    -- FSM Jeu (avec MCU comme source aléatoire)
+    -- FSM Jeu
     -- =========================================================================
     process(clk_i, reset_i)
     begin
@@ -247,8 +298,10 @@ begin
             score_rst   <= '0';
 
             case state is
+
                 when IDLE =>
                     checker_en <= '0';
+                    mcu_start  <= '0';
                     if start_pulse = '1' then
                         score_rst <= '1';
                         mcu_start <= '1';
@@ -256,31 +309,45 @@ begin
                     end if;
 
                 when WAIT_MCU =>
-                    if mcu_done = '1' then
+                    checker_en <= '0';
+                    mcu_start  <= '1';
+                    if mcu_done_sync = '1' then
                         timer_start <= '1';
+                        mcu_start   <= '0';
                         state       <= WAIT_RESPONSE;
                     end if;
 
                 when WAIT_RESPONSE =>
                     checker_en <= '1';
+                    mcu_start  <= '0';
                     if gameover_s = '1' then
                         checker_en <= '0';
                         state      <= END_GAME;
                     elsif valid_hit_s = '1' then
                         checker_en <= '0';
-                        mcu_start  <= '1';
-                        state      <= WAIT_MCU;
+                        -- FIX : si ce hit porte le score a 15, aller directement
+                        -- en END_GAME sans passer par WAIT_MCU, pour eviter le
+                        -- round fantome du au delai d'1 cycle de gameover_s.
+                        if unsigned(score_s) = 14 then
+                            state <= END_GAME;
+                        else
+                            mcu_start <= '1';
+                            state     <= WAIT_MCU;
+                        end if;
                     end if;
 
                 when END_GAME =>
                     checker_en <= '0';
+                    mcu_start  <= '0';
                     if start_pulse = '1' then
                         score_rst <= '1';
                         mcu_start <= '1';
                         state     <= WAIT_MCU;
                     end if;
 
-                when others => state <= IDLE;
+                when others =>
+                    state <= IDLE;
+
             end case;
         end if;
     end process;
@@ -292,16 +359,18 @@ begin
     led3_g_s <= led_color_s(1);
     led3_b_s <= led_color_s(0);
 
-    -- LED0 résultat
+    -- =========================================================================
+    -- LED0 resultat final (visible uniquement en END_GAME)
+    -- =========================================================================
     process(state, score_s)
     begin
         if state = END_GAME then
             if unsigned(score_s) = 15 then
-                led0_r_s <= '0'; led0_g_s <= '1'; led0_b_s <= '0';
+                led0_r_s <= '0'; led0_g_s <= '1'; led0_b_s <= '0';  -- Vert
             elsif unsigned(score_s) >= 7 then
-                led0_r_s <= '1'; led0_g_s <= '1'; led0_b_s <= '0';
+                led0_r_s <= '1'; led0_g_s <= '1'; led0_b_s <= '0';  -- Orange
             else
-                led0_r_s <= '1'; led0_g_s <= '0'; led0_b_s <= '0';
+                led0_r_s <= '1'; led0_g_s <= '0'; led0_b_s <= '0';  -- Rouge
             end if;
         else
             led0_r_s <= '0'; led0_g_s <= '0'; led0_b_s <= '0';
@@ -309,7 +378,7 @@ begin
     end process;
 
     -- =========================================================================
-    -- Mapping sorties
+    -- Mapping sorties physiques
     -- =========================================================================
     led    <= score_s;
     led3_r <= led3_r_s; led3_g <= led3_g_s; led3_b <= led3_b_s;

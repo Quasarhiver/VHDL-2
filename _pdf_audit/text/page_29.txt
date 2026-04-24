@@ -1,0 +1,42 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 29
+Génération d’un vérificateur de 
+résultat pour le jeu
+▪
+ Comportement attendu :
+•
+ Si LD3 = "100" → 
+seul BTN1 est correct
+•
+ Si LD3 = "010" → 
+seul BTN2 est correct
+•
+ Si LD3 = "001" → 
+seul BTN3 est correct
+•
+ valid_hit 
+= '1' uniquement si le bon bouton est pressé avant que timeout = '1'
+•
+ Un seul appui est comptabilisé : 
+✓
+ Réponse unique par round
+▪
+ Astuce :
+•
+ Utiliser un registre 
+user_pressed 
+pour bloquer toute réponse multiple après une réponse détectée.
+Avril 
+2026

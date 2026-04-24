@@ -1,0 +1,56 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 32
+Intégration globale
+▪
+ Objectif :
+•
+ Réaliser le fichier top
+-
+level 
+complet pour la synthèse du jeu 
+LogiGame 
+sur carte ARTY
+.
+•
+ Ce 
+fichier instancie le contrôleur principal et connecte tous les signaux aux entrées/sorties réelles 
+de la carte.
+▪
+ Signaux principaux :
+•
+ clk 
+: CLK100MHZ (horloge 100 MHz)
+•
+ btn
+(
+3
+-
+0
+) 
+: boutons de contrôle et réponse (start, rouge, vert, bleu)
+•
+ sw
+(
+3
+-
+2
+) : sélection du niveau de difficulté
+•
+ led 
+: sortie score (4 bits)
+•
+ led3_r/g/b : LED RVB pour affichage du stimulus
+Avril 
+2026

@@ -8,6 +8,9 @@
 --                 "11" → 0.5s  ( 50 000 000 cycles)
 --               Le signal TIMEOUT passe à '1' UNE SEULE FOIS à la fin du délai,
 --               puis reste à '0' jusqu'à un nouveau START.
+--               Bonne pratique : SW_LEVEL est échantillonné au START (figé
+--               pendant le décompte) pour éviter un changement de durée en
+--               plein round.
 -- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
 -- Cible       : Xilinx Artix-35T – Vivado / GHDL
 -- Révision    : 1.0 – Avril 2026
@@ -38,7 +41,8 @@ architecture Behavioral of difficulty_timer is
     constant CYCLES_500MS: unsigned(28 downto 0) := to_unsigned( 49_999_999, 29); -- 0.5s
 
     signal cnt       : unsigned(28 downto 0) := (others => '0');
-    signal limit     : unsigned(28 downto 0) := CYCLES_4S;
+    signal limit_sel : unsigned(28 downto 0) := CYCLES_4S;
+    signal limit_lat : unsigned(28 downto 0) := CYCLES_4S;
     signal running   : STD_LOGIC := '0';
     signal timeout_r : STD_LOGIC := '0';
 
@@ -50,11 +54,11 @@ begin
     process(SW_LEVEL)
     begin
         case SW_LEVEL is
-            when "00"   => limit <= CYCLES_4S;
-            when "01"   => limit <= CYCLES_2S;
-            when "10"   => limit <= CYCLES_1S;
-            when "11"   => limit <= CYCLES_500MS;
-            when others => limit <= CYCLES_4S;
+            when "00"   => limit_sel <= CYCLES_4S;
+            when "01"   => limit_sel <= CYCLES_2S;
+            when "10"   => limit_sel <= CYCLES_1S;
+            when "11"   => limit_sel <= CYCLES_500MS;
+            when others => limit_sel <= CYCLES_4S;
         end case;
     end process;
 
@@ -65,6 +69,7 @@ begin
     begin
         if RESET = '1' then
             cnt       <= (others => '0');
+            limit_lat <= CYCLES_4S;
             running   <= '0';
             timeout_r <= '0';
 
@@ -74,9 +79,10 @@ begin
             if START = '1' then
                 -- Lancement : reset compteur et activation
                 cnt     <= (others => '0');
+                limit_lat <= limit_sel; -- fige la difficulté pour ce round
                 running <= '1';
             elsif running = '1' then
-                if cnt = limit then
+                if cnt = limit_lat then
                     -- Fin du délai
                     running   <= '0';
                     timeout_r <= '1';

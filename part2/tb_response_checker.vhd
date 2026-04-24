@@ -129,73 +129,95 @@ begin
         wait until rising_edge(CLK_tb);
 
         -- =====================================================================
-        -- Test 3 : timeout
+        -- Test 3 : appui simultane -> erreur
         -- =====================================================================
-        report "--- Test 3 : timeout ---" severity note;
+        report "--- Test 3 : appui simultane interdit ---" severity note;
+        LED_COLOR_tb <= "100";
+        ENABLE_tb    <= '1';
+        wait until rising_edge(CLK_tb);
+        BTN_R_tb <= '1';
+        BTN_G_tb <= '1';
+        wait until rising_edge(CLK_tb);
+        wait for 1 ns;
+        assert VALID_HIT_tb = '0' and ERROR_tb = '1'
+            report "FAIL T3: un appui multiple doit etre refuse" severity error;
+        BTN_R_tb <= '0';
+        BTN_G_tb <= '0';
+        wait until rising_edge(CLK_tb);
+        wait for 1 ns;
+        assert VALID_HIT_tb = '0' and ERROR_tb = '0'
+            report "FAIL T3: l'impulsion ERROR devrait durer un seul cycle" severity error;
+        ENABLE_tb <= '0';
+        wait until rising_edge(CLK_tb);
+
+        -- =====================================================================
+        -- Test 4 : timeout
+        -- =====================================================================
+        report "--- Test 4 : timeout ---" severity note;
         LED_COLOR_tb <= "001";
         ENABLE_tb    <= '1';
         TIMEOUT_tb   <= '1';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '1'
-            report "FAIL T3: timeout non detecte" severity error;
+            report "FAIL T4: timeout non detecte" severity error;
         TIMEOUT_tb <= '0';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
-            report "FAIL T3: l'impulsion ERROR sur timeout devrait durer un seul cycle" severity error;
+            report "FAIL T4: l'impulsion ERROR sur timeout devrait durer un seul cycle" severity error;
         ENABLE_tb <= '0';
         wait until rising_edge(CLK_tb);
 
         -- =====================================================================
-        -- Test 4 : si ENABLE='0', aucun evenement ne doit etre pris en compte
+        -- Test 5 : si ENABLE='0', aucun evenement ne doit etre pris en compte
         -- =====================================================================
-        report "--- Test 4 : ignore quand ENABLE=0 ---" severity note;
+        report "--- Test 5 : ignore quand ENABLE=0 ---" severity note;
         LED_COLOR_tb <= "100";
         TIMEOUT_tb   <= '1';
         BTN_R_tb     <= '1';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
-            report "FAIL T4: un evenement a ete pris en compte alors que ENABLE=0" severity error;
+            report "FAIL T5: un evenement a ete pris en compte alors que ENABLE=0" severity error;
         TIMEOUT_tb <= '0';
         BTN_R_tb   <= '0';
         wait until rising_edge(CLK_tb);
 
         -- =====================================================================
-        -- Test 5 : bouton maintenu entre deux manches
+        -- Test 6 : bouton maintenu entre deux manches
         -- =====================================================================
-        report "--- Test 5 : bouton maintenu entre deux manches ---" severity note;
+        report "--- Test 6 : bouton maintenu entre deux manches ---" severity note;
         BTN_R_tb  <= '1';
         ENABLE_tb <= '0';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
-            report "FAIL T5a: aucun evenement ne doit etre declenche manche inactive" severity error;
+            report "FAIL T6a: aucun evenement ne doit etre declenche manche inactive" severity error;
 
         LED_COLOR_tb <= "100";
         ENABLE_tb    <= '1';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
-            report "FAIL T5b: un bouton deja maintenu ne doit pas compter a l'activation" severity error;
+            report "FAIL T6b: un bouton deja maintenu ne doit pas compter a l'activation" severity error;
 
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
-            report "FAIL T5c: le maintien ne doit toujours pas compter" severity error;
+            report "FAIL T6c: le maintien ne doit toujours pas compter" severity error;
 
         BTN_R_tb <= '0';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
-            report "FAIL T5d: le relachement seul ne doit rien produire" severity error;
+            report "FAIL T6d: le relachement seul ne doit rien produire" severity error;
 
         BTN_R_tb <= '1';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
         assert VALID_HIT_tb = '1' and ERROR_tb = '0'
-            report "FAIL T5e: le nouvel appui apres relachement devrait etre accepte" severity error;
+            report "FAIL T6e: le nouvel appui apres relachement devrait etre accepte" severity error;
 
         BTN_R_tb <= '0';
         ENABLE_tb <= '0';

@@ -124,18 +124,26 @@ begin
         -- Cycle 4 : BufferB <- A xor (A+B) ; préparer notB
         SELFCT_tb <= "0100"; SELROUTE_tb <= "0100"; SELOUT_tb <= "00";
         wait for CLK_PERIOD;
-        -- Cycle 5 : MC1 <- not(BufferB) = resultat XNOR ; sortie MC1
-        SELFCT_tb <= "0000"; SELROUTE_tb <= "0110"; SELOUT_tb <= "01";
+        -- Cycle 5 : BufferA <- XNOR[3:0] ; préparer NOP
+        SELFCT_tb <= "0000"; SELROUTE_tb <= "0010"; SELOUT_tb <= "00";
+        wait for CLK_PERIOD;
+        -- Cycle 6 : BufferB <- 0 ; préparer OR
+        SELFCT_tb <= "0110"; SELROUTE_tb <= "0100"; SELOUT_tb <= "00";
+        wait for CLK_PERIOD;
+        -- Cycle 7 : MC1 <- "0000" & XNOR
+        SELFCT_tb <= "0000"; SELROUTE_tb <= "0110"; SELOUT_tb <= "00";
+        wait for CLK_PERIOD;
+        -- Cycle 8 : sortie MC1
+        SELFCT_tb <= "0000"; SELROUTE_tb <= "0111"; SELOUT_tb <= "01";
         wait for CLK_PERIOD;
 
         wait for 2 ns;
-        report "TEST2 (A+B) XNOR A = 0x" & integer'image(to_integer(unsigned(RESOUT_tb))) &
+        report "TEST2 (A+B) XNOR A = " & integer'image(to_integer(unsigned(RESOUT_tb))) &
                " RESOUT[3:0]=" & integer'image(to_integer(unsigned(RESOUT_tb(3 downto 0)))) severity note;
         -- Pour A=3, B=2 : A+B=5=0101, XOR A(0011)=0110, NOT=1001=9
-        -- RESOUT_tb[3:0] attendu = 1001
-        assert RESOUT_tb(3 downto 0) = "1001"
-            report "FAIL TEST2: RESOUT[3:0]=" & integer'image(to_integer(unsigned(RESOUT_tb(3 downto 0)))) &
-                   " (attendu 9=1001)" severity error;
+        assert RESOUT_tb = "00001001"
+            report "FAIL TEST2: RESOUT=" & integer'image(to_integer(unsigned(RESOUT_tb))) &
+                   " (attendu 9=00001001)" severity error;
 
         -- =====================================================================
         -- TEST 3 : (A0 AND B1) OR (A1 AND B0)  avec A=3 (0011), B=2 (0010)

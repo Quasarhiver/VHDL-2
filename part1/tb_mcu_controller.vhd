@@ -134,12 +134,12 @@ begin
 
         wait for 2 ns;
         assert done_s = '1'
-            report "FAIL PROG0 : DONE non reçu après " & integer'image(cycle_count) & " cycles" severity error;
-        assert to_integer(unsigned(resout_s)) = 9
-            report "FAIL PROG0 : RESOUT=" & integer'image(to_integer(unsigned(resout_s))) & " (attendu 9=3*3)" severity error;
+            report "FAIL PROG0 : DONE non reçu" severity error;
+        assert resout_s = "00001001"
+            report "FAIL PROG0 : RESOUT=" & integer'image(to_integer(unsigned(resout_s)))
+                   & " (attendu 9 pour A=B=3)" severity error;
         report "PROG0 A*B = " & integer'image(to_integer(unsigned(resout_s))) &
-               " DONE=" & std_logic'image(done_s) & " (attendu 9)" severity note;
-
+               " DONE=" & std_logic'image(done_s) & " (attendu 9 pour A=B=3)" severity note;
         wait for 2 * CLK_PERIOD;
 
         -- ==================================================================
@@ -161,8 +161,11 @@ begin
         wait for 2 ns;
         assert done_s = '1'
             report "FAIL PROG1 : DONE non reçu" severity error;
-        report "PROG1 (A+B) XNOR A [3:0] = " & integer'image(to_integer(unsigned(resout_s(3 downto 0)))) &
-               " DONE=" & std_logic'image(done_s) & " (attendu 10=1010 pour A=B=3)" severity note;
+        assert resout_s = "00001010"
+            report "FAIL PROG1 : RESOUT=" & integer'image(to_integer(unsigned(resout_s)))
+                   & " (attendu 10=00001010 pour A=B=3)" severity error;
+        report "PROG1 (A+B) XNOR A = " & integer'image(to_integer(unsigned(resout_s))) &
+               " DONE=" & std_logic'image(done_s) & " (attendu 10=00001010 pour A=B=3)" severity note;
 
         wait for 2 * CLK_PERIOD;
 

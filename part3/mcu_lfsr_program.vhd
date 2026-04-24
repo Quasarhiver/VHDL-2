@@ -1,18 +1,65 @@
 -- =============================================================================
 -- Module      : mcu_lfsr_program.vhd
 -- Description : Sequenceur MCU dedie a la generation pseudo-aleatoire.
---               Le datapath reste cadence a 100 MHz, mais une nouvelle valeur
---               LFSR n'est demande qu'une fois par tick 1 kHz.
+--               Conforme au PDF : feedback = bit3 XOR bit2 (X^4 + X^3 + 1)
+--               Decalage gauche : next = {b2, b1, b0, feedback}
+--               Sequence identique au lfsr4.vhd corrige (15 etats).
 --
---               Le registre pseudo-aleatoire est stocke dans MEMCACHE1[3:0].
---               Au premier lancement apres reset, le sequenceur initialise
---               MEMCACHE1 a "1011" via A_IN, puis calcule l'etat suivant.
---               Aux lancements suivants, seule l'etape de mise a jour LFSR est
---               executee.
+--               Premiere execution (initialized=0) : init seed "1011" + boucle.
+--               Executions suivantes (initialized=1) : boucle seule (addr 2-21).
 --
---               Convention retenue :
---               feedback = bit3 XOR bit0
---               next     = {feedback, bit3, bit2, bit1}
+-- Corrections v2.0 :
+--   - feedback corrige (bit3 XOR bit2 au lieu de bit3 XOR bit0)
+--   - decalage gauche (next = {b2,b1,b0,feedback})
+--   - ROM entierement reecrite (20 etapes de boucle, adresses 2-21)
+--   - PC_DONE mis a jour de 23 a 21
+-- Auteur      : Projet LogiGame - TE608 EFREI 2025-2026
+-- Cible       : Xilinx Artix-35T - Vivado / GHDL
+-- Revision    : 2.0 - Avril 2026
+-- =============================================================================
+-- Programme ROM (SELFCT[9:6] | SELROUTE[5:2] | SELOUT[1:0]) :
+--
+-- Init (addr 0-1) :
+--   [0] BufA <- A_IN="1011"  ; SELFCT=A,   SELROUTE=BufA<-A_IN
+--   [1] MC1  <- A (seed)     ; SELFCT=NOP, SELROUTE=MC1<-S
+--
+-- Boucle (addr 2-21), etat courant MC1[3:0]={b3,b2,b1,b0} :
+--
+--   Phase A - {0,0,0,b3} dans MC2 (SRA x3) :
+--   [2]  SELFCT=SRA, BufA <- MC1[3:0]
+--   [3]  SELFCT=SRA, BufA <- S={0,b3,b2,b1}
+--   [4]  SELFCT=SRA, BufA <- S={0,0,b3,b2}
+--   [5]  SELFCT=NOP, MC2  <- S={0,0,0,b3}
+--
+--   Phase B - {0,0,b3,b2} dans BufB (SRA x2) :
+--   [6]  SELFCT=SRA, BufA <- MC1[3:0]
+--   [7]  SELFCT=SRA, BufA <- S={0,b3,b2,b1}
+--   [8]  SELFCT=NOP, BufB <- S={0,0,b3,b2}
+--
+--   Phase C - XOR(MC2,BufB) -> {0,0,b3,feedback} dans BufA :
+--   [9]  SELFCT=XOR, BufA <- MC2[3:0]={0,0,0,b3}
+--   [10] SELFCT=SLA, BufA <- S=XOR={0,0,b3,feedback}
+--
+--   Phase D - SLA x3 -> {feedback,0,0,0} dans MC2 :
+--   [11] SELFCT=SLA, BufA <- S={0,b3,feedback,0}
+--   [12] SELFCT=SLA, BufA <- S={b3,feedback,0,0}
+--   [13] SELFCT=NOP, MC2  <- S={feedback,0,0,0}
+--
+--   Phase E - SLA(MC1) -> {b2,b1,b0,0} dans BufA :
+--   [14] SELFCT=SLA, BufA <- MC1[3:0]
+--   [15] SELFCT=NOP, BufA <- S={b2,b1,b0,0}
+--
+--   Phase F - SRB x3 -> {0,0,0,feedback} dans BufB :
+--   [16] SELFCT=SRB, BufB <- MC2[3:0]={feedback,0,0,0}
+--   [17] SELFCT=SRB, BufB <- S={0,feedback,0,0}
+--   [18] SELFCT=SRB, BufB <- S={0,0,feedback,0}
+--   [19] SELFCT=OR,  BufB <- S={0,0,0,feedback}
+--
+--   Phase G - OR(BufA,BufB) -> {b2,b1,b0,feedback} dans MC1 :
+--   [20] SELFCT=NOP, MC1  <- S={b2,b1,b0,feedback}
+--
+--   Phase H - affichage :
+--   [21] SELFCT=NOP, SELOUT=01 -> RESOUT=MC1
 -- =============================================================================
 
 library IEEE;
@@ -33,82 +80,65 @@ end mcu_lfsr_program;
 
 architecture Behavioral of mcu_lfsr_program is
 
-    type rom_t is array (0 to 31) of STD_LOGIC_VECTOR(9 downto 0);
+    type rom_t   is array (0 to 31) of STD_LOGIC_VECTOR(9 downto 0);
     type state_t is (IDLE, RUN, DONE_ST);
 
     -- =========================================================================
-    -- Programme :
-    -- Le datapath consomme SELFCT avec une latence d'un cycle. La ROM ci-dessous
-    -- alterne donc les cycles de preparation UAL et les cycles de capture.
-    --
-    --   [0]  BufA <- A_IN = 1011, preparer A
-    --   [1]  MC1  <- A
-    --
-    -- Boucle LFSR :
-    --   [2]  BufA <- MC1, preparer SLA
-    --   [3]  BufA <- A<<1, preparer SLA
-    --   [4]  BufA <- A<<2, preparer SLA
-    --   [5]  MC2  <- A<<3            = {b0,0,0,0}
-    --   [6]  BufA <- MC2, preparer SRA
-    --   [7]  BufA <- ..., preparer SRA
-    --   [8]  BufA <- ..., preparer SRA
-    --   [9]  MC2  <- ...             = {0,0,0,b0}
-    --   [10] BufA <- MC1, preparer SRA
-    --   [11] BufA <- ..., preparer SRA
-    --   [12] BufA <- ..., preparer SRA
-    --   [13] BufB <- ...             = {0,0,0,b3}
-    --   [14] BufA <- MC2, preparer XOR
-    --   [15] BufB <- feedback, preparer SLB
-    --   [16] BufB <- ..., preparer SLB
-    --   [17] BufB <- ..., preparer SLB
-    --   [18] MC2  <- ...             = {feedback,0,0,0}
-    --   [19] BufA <- MC1, preparer SRA
-    --   [20] BufA <- state>>1
-    --   [21] BufB <- MC2, preparer OR
-    --   [22] MC1  <- next_state
-    --   [23] RESOUT <- MC1
+    -- ROM 32 x 10 bits
     -- =========================================================================
     constant ROM : rom_t := (
-        0  => "0001" & "0000" & "00",  -- BufA<-A_IN, preparer A
-        1  => "0000" & "0110" & "00",  -- MC1<-A
-        2  => "1101" & "1000" & "00",  -- BufA<-MC1, preparer SLA
-        3  => "1101" & "0010" & "00",  -- BufA<-S,  preparer SLA
-        4  => "1101" & "0010" & "00",  -- BufA<-S,  preparer SLA
-        5  => "0000" & "0111" & "00",  -- MC2<-S
-        6  => "1100" & "1100" & "00",  -- BufA<-MC2, preparer SRA
-        7  => "1100" & "0010" & "00",  -- BufA<-S,  preparer SRA
-        8  => "1100" & "0010" & "00",  -- BufA<-S,  preparer SRA
-        9  => "0000" & "0111" & "00",  -- MC2<-S
-        10 => "1100" & "1000" & "00",  -- BufA<-MC1, preparer SRA
-        11 => "1100" & "0010" & "00",  -- BufA<-S,  preparer SRA
-        12 => "1100" & "0010" & "00",  -- BufA<-S,  preparer SRA
-        13 => "0000" & "0100" & "00",  -- BufB<-S
-        14 => "0111" & "1100" & "00",  -- BufA<-MC2, preparer XOR
-        15 => "1111" & "0100" & "00",  -- BufB<-S,  preparer SLB
-        16 => "1111" & "0100" & "00",  -- BufB<-S,  preparer SLB
-        17 => "1111" & "0100" & "00",  -- BufB<-S,  preparer SLB
-        18 => "0000" & "0111" & "00",  -- MC2<-S
-        19 => "1100" & "1000" & "00",  -- BufA<-MC1, preparer SRA
-        20 => "0000" & "0010" & "00",  -- BufA<-S
-        21 => "0110" & "1110" & "00",  -- BufB<-MC2, preparer OR
-        22 => "0000" & "0110" & "00",  -- MC1<-S
-        23 => "0000" & "0000" & "01",  -- RESOUT=MC1
+        -- Initialisation
+        0  => "0001" & "0000" & "00",  -- SELFCT=A,   BufA <- A_IN="1011"
+        1  => "0000" & "0110" & "00",  -- SELFCT=NOP, MC1  <- A (seed "1011")
+
+        -- Phase A : {0,0,0,b3} -> MC2
+        2  => "1100" & "1000" & "00",  -- SELFCT=SRA, BufA <- MC1[3:0]
+        3  => "1100" & "0010" & "00",  -- SELFCT=SRA, BufA <- S={0,b3,b2,b1}
+        4  => "1100" & "0010" & "00",  -- SELFCT=SRA, BufA <- S={0,0,b3,b2}
+        5  => "0000" & "0111" & "00",  -- SELFCT=NOP, MC2  <- S={0,0,0,b3}
+
+        -- Phase B : {0,0,b3,b2} -> BufB
+        6  => "1100" & "1000" & "00",  -- SELFCT=SRA, BufA <- MC1[3:0]
+        7  => "1100" & "0010" & "00",  -- SELFCT=SRA, BufA <- S={0,b3,b2,b1}
+        8  => "0000" & "0100" & "00",  -- SELFCT=NOP, BufB <- S={0,0,b3,b2}
+
+        -- Phase C : XOR -> {0,0,b3,feedback} dans BufA
+        9  => "0111" & "1100" & "00",  -- SELFCT=XOR, BufA <- MC2[3:0]={0,0,0,b3}
+        10 => "1101" & "0010" & "00",  -- SELFCT=SLA, BufA <- S=XOR={0,0,b3,feedback}
+
+        -- Phase D : SLA x3 -> {feedback,0,0,0} dans MC2
+        11 => "1101" & "0010" & "00",  -- SELFCT=SLA, BufA <- S={0,b3,feedback,0}
+        12 => "1101" & "0010" & "00",  -- SELFCT=SLA, BufA <- S={b3,feedback,0,0}
+        13 => "0000" & "0111" & "00",  -- SELFCT=NOP, MC2  <- S={feedback,0,0,0}
+
+        -- Phase E : SLA(MC1) -> {b2,b1,b0,0} dans BufA
+        14 => "1101" & "1000" & "00",  -- SELFCT=SLA, BufA <- MC1[3:0]
+        15 => "0000" & "0010" & "00",  -- SELFCT=NOP, BufA <- S={b2,b1,b0,0}
+
+        -- Phase F : SRB x3 -> {0,0,0,feedback} dans BufB
+        16 => "1110" & "1110" & "00",  -- SELFCT=SRB, BufB <- MC2[3:0]={feedback,0,0,0}
+        17 => "1110" & "0100" & "00",  -- SELFCT=SRB, BufB <- S={0,feedback,0,0}
+        18 => "1110" & "0100" & "00",  -- SELFCT=SRB, BufB <- S={0,0,feedback,0}
+        19 => "0110" & "0100" & "00",  -- SELFCT=OR,  BufB <- S={0,0,0,feedback}
+
+        -- Phase G : OR -> next_state dans MC1
+        20 => "0000" & "0110" & "00",  -- SELFCT=NOP, MC1  <- S={b2,b1,b0,feedback}
+
+        -- Phase H : affichage
+        21 => "0000" & "0000" & "01",  -- SELFCT=NOP, SELOUT=01 -> RESOUT=MC1
+
         others => "0000" & "0000" & "01"
     );
 
-    constant DIV_MAX    : integer := 99999;
-    constant LOOP_START : unsigned(4 downto 0) := to_unsigned(2, 5);
-    constant PC_DONE    : unsigned(4 downto 0) := to_unsigned(23, 5);
+    constant LOOP_START : unsigned(4 downto 0) := to_unsigned(2,  5);
+    constant PC_DONE    : unsigned(4 downto 0) := to_unsigned(21, 5);
 
-    signal div_cnt      : integer range 0 to DIV_MAX := 0;
-    signal tick_1khz    : STD_LOGIC := '0';
-
-    signal state        : state_t := IDLE;
+    signal state        : state_t   := IDLE;
     signal pc           : unsigned(4 downto 0) := (others => '0');
     signal instr        : STD_LOGIC_VECTOR(9 downto 0);
     signal done_r       : STD_LOGIC := '0';
-    signal run_req      : STD_LOGIC := '0';
     signal initialized  : STD_LOGIC := '0';
+    signal start_d      : STD_LOGIC := '0';
 
 begin
 
@@ -119,29 +149,7 @@ begin
     DONE     <= done_r;
 
     -- =========================================================================
-    -- Diviseur 100 MHz -> 1 kHz
-    -- =========================================================================
-    process(CLK, RESET)
-    begin
-        if RESET = '1' then
-            div_cnt   <= 0;
-            tick_1khz <= '0';
-        elsif rising_edge(CLK) then
-            if div_cnt = DIV_MAX then
-                div_cnt   <= 0;
-                tick_1khz <= '1';
-            else
-                div_cnt   <= div_cnt + 1;
-                tick_1khz <= '0';
-            end if;
-        end if;
-    end process;
-
-    -- =========================================================================
-    -- Sequenceur :
-    -- - START demande une nouvelle valeur pseudo-aleatoire
-    -- - la demande est servie au prochain tick 1 kHz
-    -- - ensuite les instructions s'enchainent a 100 MHz, une seule fois chacune
+    -- Sequenceur
     -- =========================================================================
     process(CLK, RESET)
     begin
@@ -149,25 +157,22 @@ begin
             state       <= IDLE;
             pc          <= (others => '0');
             done_r      <= '0';
-            run_req     <= '0';
             initialized <= '0';
+            start_d     <= '0';
 
         elsif rising_edge(CLK) then
             done_r <= '0';
-
-            if START = '1' then
-                run_req <= '1';
-            end if;
+            start_d <= START;
 
             case state is
+
                 when IDLE =>
-                    if tick_1khz = '1' and (run_req = '1' or START = '1') then
+                    if START = '1' and start_d = '0' then
                         if initialized = '1' then
                             pc <= LOOP_START;
                         else
                             pc <= (others => '0');
                         end if;
-                        run_req <= '0';
                         state   <= RUN;
                     end if;
 
@@ -185,6 +190,7 @@ begin
 
                 when others =>
                     state <= IDLE;
+
             end case;
         end if;
     end process;

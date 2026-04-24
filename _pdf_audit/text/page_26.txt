@@ -1,0 +1,54 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 26
+Génération d’un compteur de score 
+pour le jeu
+▪
+ Objectif :
+•
+ Concevoir un compteur de score en VHDL pour le jeu 
+LogiGame
+, capable de :
+•
+ Incrémenter le score à chaque bonne réponse (
+valid_hit 
+= '1')
+•
+ Conserver la valeur atteinte en cas de mauvaise réponse (
+valid_hit 
+= '0')
+•
+ Générer un signal 
+game_over 
+lorsque le score atteint 15 ou en cas d’erreur
+▪
+ Spécifications :
+•
+ Entrée 
+clk 
+: horloge système
+•
+ Entrée reset : remise à zéro du score
+•
+ Entrée 
+valid_hit 
+: indiquant la réussite (1) ou l’échec (0)
+•
+ Sortie score : score courant codé sur 4 bits
+•
+ Sortie 
+game_over 
+: signal indiquant la fin du jeu
+Avril 
+2026

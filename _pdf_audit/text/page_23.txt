@@ -1,0 +1,75 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 23
+Génération d’un générateur de 
+séquence pseudo aléatoire
+▪
+ 2
+ème 
+partie (à la fin du projet 
+– 
+remplacement du LFSR en VHDL) : 
+•
+ Utiliser le cœur de microcontrôleur comme générateur de la séquence pseudo
+-
+aléatoire avant de le tester : 
+✓
+ Codage de la mémoire d’instruction :
+o
+ Codage des instructions successives gérant la génération d’une valeur pseudo
+-
+aléatoire
+✓
+ Codage de l’automate de pilotage du générateur : 
+o
+ Boucle des instructions de la mémoire d’instruction permettant de générer toutes les valeurs pseudo
+-
+aléatoires successives
+✓
+ Valeur initiale du vecteur interne : 
+o
+ «
+ 1011
+»
+✓
+ Fréquence du cœur du microcontrôleur 
+o
+ FMCU = 1 kHz
+•
+ Spécifications
+✓
+ Le registre pseudo
+-
+aléatoire est simulé via instructions VHDL
+✓
+ Les données sont stockées dans MEM_CACHE_1, 
+ Buffer_A
+, 
+Buffer_B
+ , etc.
+✓
+ Le feedback est obtenu via une opération XOR entre les bits 3 et 2
+✓
+ La séquence est construite via : masquage, décalage, XOR, recomposition
+•
+ Résultat attendu : 
+✓
+ La valeur pseudo
+-
+aléatoire évolue à chaque exécution du bloc d’instructions LFSR.
+✓
+ La séquence obtenue est identique à celle d’un LFSR matériel de type X⁴ 
++ X³ + 1.
+Avril 
+2026

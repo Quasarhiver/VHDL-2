@@ -1,0 +1,56 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io
+▪
+ Led 
+LD3 : 
+•
+ Utilisée comme LED de jeu principale (clignotement 
+stimulus)
+▪
+ Boutons BTN1, BTN2 et BTN3 :
+•
+ Permet d’indiquer la couleur de LD3 :
+✓
+ BTN1 : couleur BLEUE
+✓
+ BTN2 : couleur VERTE
+✓
+ BTN3 : couleur ROUGE
+▪
+ Switches SW3 et SW2 : 
+•
+ Utilisés pour choisir le niveau de difficulté
+▪
+ Bouton BTN0 : 
+•
+ Permet de réinitialiser le jeu et de le lancer
+▪
+ Led 
+LD0 : 
+•
+ Indique le niveau de réussite final (vert, orange, 
+rouge) :
+✓
+ Vert : score de 15
+✓
+ Orange : score entre 7 et 14
+✓
+ Rouge : score entre 0 et 
+6
+8
+Interface avec la carte de 
+développement FPGA
+Avril 
+2026

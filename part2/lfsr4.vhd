@@ -7,10 +7,12 @@
 --               est mémorisée jusqu'au prochain tick 1 kHz.
 --
 --               Note :
---               Le sujet mentionne X^4 + X^3 + 1 avec feedback bits 3 et 2,
---               mais avec l'orientation de registre retenue ici cela ne donne
---               pas une séquence maximale. On utilise donc bits 3 et 0 afin
---               d'obtenir une séquence complète de 15 états non nuls.
+--               Le sujet demande le polynôme X^4 + X^3 + 1 avec :
+--                 - feedback = XOR(bits 3 et 2)
+--                 - séquence maximale de 15 états non nuls
+--               L'orientation retenue ici est un décalage gauche :
+--                 next = {b2, b1, b0, feedback}
+--               ce qui satisfait ces contraintes.
 -- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
 -- Cible       : Xilinx Artix-35T – Vivado / GHDL
 -- Révision    : 1.0 – Avril 2026
@@ -49,8 +51,8 @@ architecture Behavioral of lfsr4 is
 begin
 
     -- =========================================================================
-    -- Feedback LFSR : taps bit3 et bit0 pour une séquence maximale sur 4 bits
-    -- avec le décalage retenu ici.
+    -- Feedback LFSR : taps bit3 et bit2 (X^4 + X^3 + 1).
+    -- Décalage gauche : next = {b2, b1, b0, feedback}.
     -- =========================================================================
     feedback <= lfsr_reg(3) xor lfsr_reg(2);
 

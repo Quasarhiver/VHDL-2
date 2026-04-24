@@ -46,7 +46,7 @@ architecture Behavioral of tb_mcu_lfsr_program is
         );
     end component;
 
-    constant CLK_P : time := 10 ns;
+    constant CLK_P : time := 1 ms;
 
     signal CLK_tb      : STD_LOGIC := '0';
     signal RESET_tb    : STD_LOGIC := '1';
@@ -59,10 +59,10 @@ architecture Behavioral of tb_mcu_lfsr_program is
 
     type seq_t is array (0 to 15) of STD_LOGIC_VECTOR(3 downto 0);
     constant EXPECTED_SEQ : seq_t := (
-        "0101", "1010", "1101", "0110",
-        "0011", "1001", "0100", "0010",
-        "0001", "1000", "1100", "1110",
-        "1111", "0111", "1011", "0101"
+        "0111", "1111", "1110", "1100",
+        "1000", "0001", "0010", "0100",
+        "1001", "0011", "0110", "1101",
+        "1010", "0101", "1011", "0111"
     );
 
 begin
@@ -118,7 +118,7 @@ begin
             wait for CLK_P;
             START_tb <= '0';
 
-            wait until DONE_tb = '1' for 2 ms;
+            wait until DONE_tb = '1' for 25 ms;
             assert DONE_tb = '1'
                 report "FAIL: DONE non recu pour l'etape " & integer'image(i) severity error;
 

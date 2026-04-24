@@ -1,0 +1,48 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io 28
+Génération d’un vérificateur de 
+résultat pour le jeu
+▪
+ Objectif :
+•
+ Créer un composant VHDL qui valide si le joueur appuie sur le bon bouton dans le temps imparti.
+▪
+ Spécifications :
+•
+ Entrée 
+clk 
+: horloge système
+•
+ Entrée reset : réinitialisation du module
+•
+ Entrée timeout : signal de fin de délai
+•
+ Entrée 
+led_color 
+: couleur affichée sur LD3 (3 bits, R=100, G=010, B=001)
+•
+ Entrées 
+btn_r
+, 
+btn_g
+, 
+btn_b 
+: boutons de réponse (BTN1, BTN2, BTN3)
+•
+ Sortie 
+valid_hit 
+: passe à '1' si la bonne réponse a été donnée dans les temps
+Avril 
+2026

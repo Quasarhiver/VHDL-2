@@ -1,0 +1,91 @@
+Couleurs primaires 
+Palette infographie  
+#00AAEF
+#000000
+#F3B329
+#BFCAD7
+#459DBB
+#A5DCD9
+#9DD4DD
+#8AB6BF
+#7B9FAD
+#8D9FAA
+#7A93A4
+Contact : +33 8 00 40 60 40 - @ formation@kanopee.io - Web : kanopee.io
+▪
+ Les mémoires 
+Buffer_A 
+et 
+Buffer_B
+•
+ Les mémoires 
+Buffer_A
+ , 
+Buffer_B  
+permettent de stocker les données 
+directement liées au cœur de l’UAL, c'est
+-
+à
+-
+dire à la sous
+-
+fonction arithmétique 
+et logique. 
+•
+ Elles seront chargées (activées sur front montant de l’entrée 
+clk
+) suivant les 
+valeurs de l’entrée SEL_ROUTE.
+▪
+ Les mémoires MEM_SR_IN_L et MEM_SR_IN_R permettent de stocker 
+les valeurs des retenues d’entrées. 
+•
+ Elles sont systématiquement mémorisées à chaque front montant de l’horloge 
+CLK.
+▪
+ La mémoire MEM_SEL_FCT permet de mémoriser la fonction 
+arithmétique ou logique à réaliser. 
+•
+ Elle est systématiquement chargée à chaque front montant d’horloge.  
+▪
+ Les mémoires MEM_CACHE_1 et MEM_CACHE_2
+•
+ Les mémoires MEM_CACHE_1 et MEM_CACHE_2 permettent de stocker les 
+données des entrées A_IN et B_IN ou les résultats intermédiaires de la sortie S, 
+c'est
+-
+à
+-
+dire à la sortie de la sous
+-
+fonction arithmétique et logique. 
+✓
+ Il est à noter que les sorties SR_OUT_L et SR_OUT_R ne peuvent pas être mémorisées. 
+✓
+ Ces deux mémoires seront chargées (activées sur front montant de l’entrée CLK) suivant 
+les valeurs de l’entrée SEL_ROUTE.
+▪
+ La mémoire MEM_SEL_OUT
+•
+ La mémoire MEM_SEL_OUT permet de stocker les données de l’entrée 
+SEL_OUT. 
+•
+ Elle est systématiquement chargée à chaque front montant de l’horloge CLK.
+▪
+ La mémoire MEM_INSTRUCTIONS
+•
+ La mémoire MEM_INSTRUCTIONS permet de stocker les instructions 
+successives à réaliser
+•
+ Son pointeur est systématiquement indenté à chaque front montant de l’horloge 
+CLK
+▪
+ SEL_ROUTE permet de définir le transfert de données qui sera effectué 
+lors du prochain cycle horloge (prochain front montant de l’horloge). 
+•
+ Elle ne doit donc pas être mémorisée comme MEM_SEL_FCT et 
+MEM_SEL_OUT
+12
+Les mémoires
+Avril 
+2026

@@ -48,6 +48,7 @@ begin
     process(CLK, RESET)
         variable correct_btn : STD_LOGIC;
         variable any_btn     : STD_LOGIC;
+        variable onehot_btn  : STD_LOGIC;
     begin
         if RESET = '1' then
             user_pressed <= '0';
@@ -69,11 +70,18 @@ begin
 
             -- Un bouton quelconque appuyé
             any_btn := BTN_R or BTN_G or BTN_B;
+            if (BTN_R = '1' and BTN_G = '0' and BTN_B = '0') or
+               (BTN_R = '0' and BTN_G = '1' and BTN_B = '0') or
+               (BTN_R = '0' and BTN_G = '0' and BTN_B = '1') then
+                onehot_btn := '1';
+            else
+                onehot_btn := '0';
+            end if;
 
             if ENABLE = '1' and user_pressed = '0' then
                 if any_btn = '1' and prev_any_btn = '0' then
                     user_pressed <= '1';  -- Verrouiller après premier appui
-                    if correct_btn = '1' then
+                    if onehot_btn = '1' and correct_btn = '1' then
                         valid_hit_r <= '1';
                     else
                         error_r <= '1';
