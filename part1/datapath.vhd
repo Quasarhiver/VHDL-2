@@ -146,6 +146,9 @@ begin
             -- Routage des données selon SELROUTE
             -- (le routage définit le transfert qui s'effectue sur ce front montant)
             -- -----------------------------------------------------------------
+-- -----------------------------------------------------------------
+            -- Routage des données selon SELROUTE
+            -- -----------------------------------------------------------------
             case SELROUTE is
 
                 -- 0000 : BufferA ← A_IN (zero-étendu à 8 bits)
@@ -156,25 +159,25 @@ begin
                 when "0001" =>
                     BufferB <= "0000" & B_IN;
 
-                -- 0010 : BufferA[3:0] ← S[3:0]  (4 LSB de S → 4 LSB de BufferA)
+                -- 0010 : BufferA[3:0] ← S[3:0]  (4 bits de poids faibles de S → nibble bas de A)
                 when "0010" =>
                     BufferA(3 downto 0) <= ual_S(3 downto 0);
-                    BufferA(7 downto 4) <= BufferA(7 downto 4);  -- inchangé
+                    BufferA(7 downto 4) <= BufferA(7 downto 4);
 
-                -- 0011 : BufferA[7:4] ← S[3:0]  (4 LSB de S → 4 MSB de BufferA)
+                -- 0011 : BufferA[3:0] ← S[7:4]  (4 bits de poids forts de S → nibble bas de A)
                 when "0011" =>
-                    BufferA(7 downto 4) <= ual_S(3 downto 0);
-                    BufferA(3 downto 0) <= BufferA(3 downto 0);  -- inchangé
+                    BufferA(3 downto 0) <= ual_S(7 downto 4);
+                    BufferA(7 downto 4) <= BufferA(7 downto 4);
 
                 -- 0100 : BufferB[3:0] ← S[3:0]
                 when "0100" =>
                     BufferB(3 downto 0) <= ual_S(3 downto 0);
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
 
-                -- 0101 : BufferB[7:4] ← S[3:0]
+                -- 0101 : BufferB[3:0] ← S[7:4]  (4 bits de poids forts de S → nibble bas de B)
                 when "0101" =>
-                    BufferB(7 downto 4) <= ual_S(3 downto 0);
-                    BufferB(3 downto 0) <= BufferB(3 downto 0);
+                    BufferB(3 downto 0) <= ual_S(7 downto 4);
+                    BufferB(7 downto 4) <= BufferB(7 downto 4);
 
                 -- 0110 : MEMCACHE1 ← S  (8 bits complets)
                 when "0110" =>
@@ -189,7 +192,7 @@ begin
                     BufferA(3 downto 0) <= MEMCACHE1(3 downto 0);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);
 
-                -- 1001 : BufferA[3:0] ← MEMCACHE1[7:4]  (nibble fort → nibble faible de A)
+                -- 1001 : BufferA[3:0] ← MEMCACHE1[7:4]  (nibble fort de MC1 → nibble bas de A)
                 when "1001" =>
                     BufferA(3 downto 0) <= MEMCACHE1(7 downto 4);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);
@@ -225,7 +228,7 @@ begin
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
 
                 when others =>
-                    null;  -- aucune opération de routage
+                    null;
 
             end case;
         end if;

@@ -144,19 +144,18 @@ begin
             RESOUT   => resout_i,
             SROUTL   => sroutl_i,
             SROUTR   => sroutr_i
-        );
-
-    -- =========================================================================
+        )
+-- =========================================================================
     -- Mapping des sorties LEDs
     -- RESOUT[7:0] → rouge (8 leds)
     -- led[3:0]  = RESOUT[3:0]
     -- led0_r    = RESOUT[4]  (5ème LED rouge)
     -- led1_r    = RESOUT[5]
     -- led2_r    = RESOUT[6]
-    -- led3_r    = RESOUT[7]
-    -- led0_g    = DONE  (vert LSB = calcul terminé)
-    -- led0_b    = SROUTL
-    -- led1_b    = SROUTR
+    -- led3_r    = RESOUT[7]  (8ème LED rouge)
+    -- led3_g    = DONE  (vert 8ème LED = calcul terminé)
+    -- led0_b    = SROUTL (5ème LED bleue)
+    -- led1_b    = SROUTR (6ème LED bleue)
     -- =========================================================================
     led    <= resout_i(3 downto 0);
     led0_r <= resout_i(4);
@@ -164,15 +163,15 @@ begin
     led2_r <= resout_i(6);
     led3_r <= resout_i(7);
 
-    led0_g <= done_i;     -- Vert : résultat disponible
-    led0_b <= sroutl_i;   -- Bleu : bit sortant gauche
-    led1_b <= sroutr_i;   -- Bleu : bit sortant droit
+    led3_g <= done_i;     -- Vert : résultat disponible (8ème LED, même LED que RESOUT[7])
+    led0_b <= sroutl_i;   -- Bleu : bit sortant gauche (5ème LED)
+    led1_b <= sroutr_i;   -- Bleu : bit sortant droit  (6ème LED)
 
     -- LEDs non utilisées : éteintes
+    led0_g <= '0';
     led1_g <= '0';
     led2_g <= '0';
     led2_b <= '0';
-    led3_g <= '0';
     led3_b <= '0';
-
+    
 end Behavioral;
