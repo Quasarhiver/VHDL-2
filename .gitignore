@@ -1,6 +1,10 @@
-sim/
-tools/
-scripts/
-browser-state-*.json
-browser-state-*-fingerprint.json
-work-obj*.cf
+*
+!.gitignore
+!README.md
+!TE608 - 25_26 - Conception de systèmes numériques 2 - v1.1.pdf
+!part1/
+!part1/**
+!part2/
+!part2/**
+!part3/
+!part3/**
