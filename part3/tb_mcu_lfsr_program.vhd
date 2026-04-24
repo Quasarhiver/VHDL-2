@@ -1,11 +1,12 @@
 -- =============================================================================
 -- Module      : tb_mcu_lfsr_program.vhd
--- Description : Testbench dedie au generateur pseudo-aleatoire MCU.
---               Verifie :
+-- Description : Testbench du sequenceur MCU qui remplace le LFSR materiel.
+--               Le scenario verifie :
 --               - qu'aucune execution n'a lieu sans START
---               - que DONE est emis apres chaque demande
---               - que la sequence de 15 etats attendue est produite
---               - que l'etat interne est preserve entre les demandes
+--               - qu'un START parasite pendant RUN est ignore
+--               - que DONE est bien une impulsion d'un cycle
+--               - que la sequence complete des 15 etats est correcte
+--               - qu'un RESET relance proprement la sequence depuis la seed
 -- =============================================================================
 
 library IEEE;
@@ -97,6 +98,32 @@ begin
         );
 
     process
+        procedure request_step is
+        begin
+            START_tb <= '1';
+            wait for CLK_P;
+            START_tb <= '0';
+        end procedure;
+
+        procedure wait_done_and_check(constant idx : in integer) is
+        begin
+            wait until DONE_tb = '1' for 25 ms;
+            assert DONE_tb = '1'
+                report "FAIL: DONE non recu pour l'etape " & integer'image(idx) severity error;
+
+            wait for 1 ns;
+            assert RESOUT_tb(3 downto 0) = EXPECTED_SEQ(idx)
+                report "FAIL: etat pseudo-aleatoire inattendu a l'etape " &
+                       integer'image(idx) & ", obtenu " &
+                       integer'image(to_integer(unsigned(RESOUT_tb(3 downto 0))))
+                severity error;
+
+            wait until rising_edge(CLK_tb);
+            wait for 1 ns;
+            assert DONE_tb = '0'
+                report "FAIL: DONE devrait etre un pulse d'un seul cycle" severity error;
+        end procedure;
+
     begin
         report "===== Testbench MCU LFSR Program =====" severity note;
 
@@ -112,30 +139,37 @@ begin
         assert RESOUT_tb = "00000000"
             report "FAIL: RESOUT devrait rester nul avant la premiere execution" severity error;
 
-        -- Verification de la sequence complete.
-        for i in 0 to 15 loop
-            START_tb <= '1';
-            wait for CLK_P;
-            START_tb <= '0';
+        -- Premier pas : un START parasite envoye pendant RUN ne doit pas
+        -- modifier le resultat ni armer un second pas.
+        request_step;
+        wait for 7 * CLK_P;
+        request_step;
+        wait_done_and_check(0);
 
-            wait until DONE_tb = '1' for 25 ms;
-            assert DONE_tb = '1'
-                report "FAIL: DONE non recu pour l'etape " & integer'image(i) severity error;
+        -- L'etat suivant prouve que le START parasite a ete ignore.
+        request_step;
+        wait_done_and_check(1);
 
-            wait for 1 ns;
-            assert RESOUT_tb(3 downto 0) = EXPECTED_SEQ(i)
-                report "FAIL: etat pseudo-aleatoire inattendu a l'etape " &
-                       integer'image(i) & ", obtenu " &
-                       integer'image(to_integer(unsigned(RESOUT_tb(3 downto 0))))
-                severity error;
-            report "Etat[" & integer'image(i) & "] = " &
-                   integer'image(to_integer(unsigned(RESOUT_tb(3 downto 0)))) severity note;
-
-            wait until rising_edge(CLK_tb);
-            wait for 1 ns;
-            assert DONE_tb = '0'
-                report "FAIL: DONE devrait etre un pulse d'un seul cycle" severity error;
+        for i in 2 to 15 loop
+            request_step;
+            wait_done_and_check(i);
         end loop;
+
+        -- Un reset doit remettre l'etat interne sur la seed "1011".
+        RESET_tb <= '1';
+        wait for 3 * CLK_P;
+        RESET_tb <= '0';
+        wait for 2 * CLK_P;
+
+        wait for 1200 us;
+        assert DONE_tb = '0'
+            report "FAIL: DONE actif apres reset sans START" severity error;
+        assert RESOUT_tb = "00000000"
+            report "FAIL: RESOUT devrait revenir a zero apres reset tant qu'aucun START n'est envoye"
+            severity error;
+
+        request_step;
+        wait_done_and_check(0);
 
         report "===== MCU LFSR Program termine =====" severity note;
         wait;

@@ -1,17 +1,17 @@
 -- =============================================================================
 -- Module      : tb_logigame_mcu_top.vhd
--- Description : Banc de test d'integration globale pour la Partie 3.
---               Verifie un scenario joueur complet :
---               - demarrage via btn0 (reset puis start au relachement)
---               - premiere manche reussie
---               - deuxieme manche ratee
---               - affichage du score final
---               - redemarrage
+-- Description : Banc de test d'integration globale pour la partie 3.
+--               Le scenario couvre :
+--               - le demarrage via btn0 (reset pendant l'appui, START au relachement)
+--               - deux manches reussies
+--               - une troisieme manche ratee
+--               - l'affichage du score final
+--               - un redemarrage propre
 --
-    -- Correction v3.0 :
-    --   Couleurs attendues mises a jour pour un vrai modulo 3 :
-    --   - Round 1 : etat LFSR "0111" -> 7 mod 3 = 1 -> VERT
-    --   - Round 2 : etat LFSR "1111" -> 15 mod 3 = 0 -> ROUGE
+--               Couleurs attendues avec le vrai modulo 3 :
+--               - manche 1 : etat "0111" -> 7 mod 3 = 1 -> vert
+--               - manche 2 : etat "1111" -> 15 mod 3 = 0 -> rouge
+--               - manche 3 : etat "1110" -> 14 mod 3 = 2 -> bleu
 -- =============================================================================
 
 library IEEE;
@@ -57,10 +57,10 @@ begin
             sw        => sw,
             btn       => btn,
             led       => led,
-            led0_r => led0_r, led0_g => led0_g, led0_b => led0_b,
-            led1_r => led1_r, led1_g => led1_g, led1_b => led1_b,
-            led2_r => led2_r, led2_g => led2_g, led2_b => led2_b,
-            led3_r => led3_r, led3_g => led3_g, led3_b => led3_b
+            led0_r    => led0_r, led0_g => led0_g, led0_b => led0_b,
+            led1_r    => led1_r, led1_g => led1_g, led1_b => led1_b,
+            led2_r    => led2_r, led2_g => led2_g, led2_b => led2_b,
+            led3_r    => led3_r, led3_g => led3_g, led3_b => led3_b
         );
 
     CLK100MHZ <= not CLK100MHZ after CLK100MHZ_PERIOD / 2;
@@ -105,37 +105,24 @@ begin
     begin
         report "===== Testbench LogiGame MCU Top =====" severity note;
 
-        -- Niveau difficile pour accelerer la simulation (timeout court)
         sw  <= "1100";
         btn <= "0000";
         wait for 10 * CLK100MHZ_PERIOD;
 
-        -- =====================================================================
-        -- Demarrage : btn0 appuye (reset) puis relache (start pulse)
-        -- =====================================================================
         report "--- Demarrage de la partie ---" severity note;
         pulse_btn(0);
-        wait for WAIT_ROUND;  -- attendre que le MCU complete sa premiere execution
+        wait for WAIT_ROUND;
 
         assert led = "0000"
             report "FAIL: le score initial devrait etre nul" severity error;
         assert led0_r = '0' and led0_g = '0' and led0_b = '0'
             report "FAIL: LED0 devrait etre eteinte pendant le jeu" severity error;
 
-        -- Sequence corrigee : seed "1011" -> premiere valeur "0111" -> 7 mod 3 = 1 -> VERT
+        -- Seed 1011 -> premiere valeur 0111 -> 7 mod 3 = 1 -> vert.
         assert led3_r = '0' and led3_g = '1' and led3_b = '0'
             report "FAIL: premiere couleur attendue = verte (etat LFSR 0111, 7 mod 3 = 1)"
             severity error;
-        report "Score initial = " &
-               integer'image(to_integer(unsigned(led))) &
-               " LED3: R=" & std_logic'image(led3_r) &
-               " G=" & std_logic'image(led3_g) &
-               " B=" & std_logic'image(led3_b) &
-               " (attendu vert, etat 0111)" severity note;
 
-        -- =====================================================================
-        -- Manche 1 : bonne reponse (rouge -> btn3)
-        -- =====================================================================
         report "--- Manche 1 : bonne reponse ---" severity note;
         press_correct_btn;
         wait for WAIT_ROUND;
@@ -145,43 +132,37 @@ begin
             severity error;
         assert led0_r = '0' and led0_g = '0' and led0_b = '0'
             report "FAIL: LED0 devrait rester eteinte avant le game over" severity error;
-
-        -- "0111" -> deuxieme valeur "1111" -> 15 mod 3 = 0 -> ROUGE
+        -- Deuxieme etat 1111 -> 15 mod 3 = 0 -> rouge.
         assert led3_r = '1' and led3_g = '0' and led3_b = '0'
             report "FAIL: deuxieme couleur attendue = rouge (etat LFSR 1111, 15 mod 3 = 0)"
             severity error;
-        report "Score apres manche 1 = " &
-               integer'image(to_integer(unsigned(led))) &
-               " LED3: R=" & std_logic'image(led3_r) &
-               " G=" & std_logic'image(led3_g) &
-               " B=" & std_logic'image(led3_b) &
-               " (attendu rouge, etat 1111)" severity note;
 
-        -- =====================================================================
-        -- Manche 2 : mauvaise reponse -> END_GAME
-        -- =====================================================================
-        report "--- Manche 2 : mauvaise reponse (fin de partie attendue) ---"
-            severity note;
+        report "--- Manche 2 : bonne reponse ---" severity note;
+        press_correct_btn;
+        wait for WAIT_ROUND;
+
+        assert led = "0010"
+            report "FAIL: le score devrait valoir 2 apres la deuxieme bonne reponse"
+            severity error;
+        assert led0_r = '0' and led0_g = '0' and led0_b = '0'
+            report "FAIL: LED0 devrait rester eteinte tant que la partie continue"
+            severity error;
+        -- Troisieme etat 1110 -> 14 mod 3 = 2 -> bleu.
+        assert led3_r = '0' and led3_g = '0' and led3_b = '1'
+            report "FAIL: troisieme couleur attendue = bleue (etat LFSR 1110, 14 mod 3 = 2)"
+            severity error;
+
+        report "--- Manche 3 : mauvaise reponse (fin de partie attendue) ---" severity note;
         press_wrong_btn;
         wait for WAIT_ROUND;
 
-        assert led = "0001"
-            report "FAIL: le score final devrait rester a 1 apres une erreur"
+        assert led = "0010"
+            report "FAIL: le score final devrait rester a 2 apres une erreur"
             severity error;
-        -- Score 1 (entre 0 et 6) -> LED0 rouge
         assert led0_r = '1' and led0_g = '0' and led0_b = '0'
-            report "FAIL: LED0 devrait etre rouge pour un score final de 1"
+            report "FAIL: LED0 devrait etre rouge pour un score final de 2"
             severity error;
-        report "Score final = " &
-               integer'image(to_integer(unsigned(led))) &
-               " LED0: R=" & std_logic'image(led0_r) &
-               " G=" & std_logic'image(led0_g) &
-               " B=" & std_logic'image(led0_b) &
-               " (attendu rouge, score=1)" severity note;
 
-        -- =====================================================================
-        -- Redemarrage
-        -- =====================================================================
         report "--- Redemarrage ---" severity note;
         wait for 5 * CLK100MHZ_PERIOD;
         pulse_btn(0);
@@ -196,15 +177,9 @@ begin
         assert led = "0000"
             report "FAIL: le score doit rester a 0 au debut de la nouvelle partie"
             severity error;
-        -- Apres restart, le MCU repart du seed "1011" -> premiere valeur "0111" -> VERT
         assert led3_r = '0' and led3_g = '1' and led3_b = '0'
             report "FAIL: premiere couleur apres restart attendue = verte"
             severity error;
-        report "Apres restart : score=" &
-               integer'image(to_integer(unsigned(led))) &
-               " LED3: R=" & std_logic'image(led3_r) &
-               " G=" & std_logic'image(led3_g) &
-               " B=" & std_logic'image(led3_b) severity note;
 
         report "===== LogiGame MCU Top termine =====" severity note;
         wait;

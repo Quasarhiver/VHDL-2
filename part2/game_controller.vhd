@@ -1,32 +1,28 @@
 -- =============================================================================
 -- Module      : game_controller.vhd
--- Description : Contrôleur principal du jeu LogiGame.
---               FSM : IDLE → NEW_ROUND → WAIT_COLOR → WAIT_RESPONSE → END_GAME
+-- Description : Controleur principal du jeu LogiGame pour la partie 2.
 --
---               IDLE         : Attente du bouton START (btn0)
---               NEW_ROUND    : Avance le LFSR d'un pas
---               WAIT_COLOR   : Attend >1 période 1kHz (100 001 cycles) pour que
---                              le LFSR ait effectivement avancé et que la couleur
---                              affichée sur LD3 soit stable avant de lancer le timer
---               WAIT_RESPONSE: Lance le timer, attente de la réponse joueur ou timeout
---               END_GAME     : Jeu terminé, affichage score final sur led0 RGB
+--               FSM :
+--                 IDLE          -> attente de START
+--                 NEW_ROUND     -> demande une nouvelle valeur au LFSR
+--                 WAIT_COLOR    -> attend que la nouvelle couleur soit stable
+--                 WAIT_RESPONSE -> accepte une reponse ou un timeout
+--                 END_GAME      -> fige le score et affiche LED0
 --
---               LED_COLOR (3 bits) : R=100 / G=010 / B=001
---               La couleur est dérivée de la valeur 4 bits du LFSR via
---               un vrai modulo 3 :
---                 0 → Rouge
---                 1 → Vert
---                 2 → Bleu
+--               LD3 affiche la couleur de la manche courante.
+--               Cette couleur est derivee de la valeur pseudo-aleatoire 4 bits
+--               par un vrai modulo 3 :
+--                 0 -> rouge
+--                 1 -> vert
+--                 2 -> bleu
 --
---               Led0 résultat final :
---                 Vert   : score = 15
---                 Orange : score ∈ [7,14]  (R+G)
---                 Rouge  : score ∈ [0,6]
---
-
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado / GHDL
--- Révision    : 2.0 – Avril 2026
+--               LED0 affiche le resultat final :
+--                 vert   si score = 15
+--                 orange si score est entre 7 et 14
+--                 rouge  sinon
+-- Auteur      : Projet LogiGame - TE608 EFREI 2025-2026
+-- Cible       : Xilinx Artix-35T - Vivado / GHDL
+-- Revision    : 2.0 - Avril 2026
 -- =============================================================================
 
 library IEEE;
@@ -37,17 +33,17 @@ entity game_controller is
     Port (
         CLK        : in  STD_LOGIC;
         RESET      : in  STD_LOGIC;
-        -- Entrées joueur
-        START      : in  STD_LOGIC;                    -- btn0 = démarrer
+        -- Entrees joueur
+        START      : in  STD_LOGIC;                    -- btn0 = demarrer
         BTN_R      : in  STD_LOGIC;                    -- btn3 = rouge
         BTN_G      : in  STD_LOGIC;                    -- btn2 = vert
         BTN_B      : in  STD_LOGIC;                    -- btn1 = bleu
-        SW_LEVEL   : in  STD_LOGIC_VECTOR(1 downto 0); -- sw[3:2] difficulté
+        SW_LEVEL   : in  STD_LOGIC_VECTOR(1 downto 0); -- sw[3:2] difficulte
         -- Sorties LED stimulus LD3
         LED3_R     : out STD_LOGIC;
         LED3_G     : out STD_LOGIC;
         LED3_B     : out STD_LOGIC;
-        -- Sortie LED résultat LED0
+        -- Sortie LED resultat LED0
         LED0_R     : out STD_LOGIC;
         LED0_G     : out STD_LOGIC;
         LED0_B     : out STD_LOGIC;
@@ -58,9 +54,6 @@ end game_controller;
 
 architecture Behavioral of game_controller is
 
-    -- =========================================================================
-    -- Composants
-    -- =========================================================================
     component lfsr4 is
         Port (
             CLK    : in  STD_LOGIC;
@@ -106,15 +99,12 @@ architecture Behavioral of game_controller is
         );
     end component;
 
-    -- =========================================================================
-    -- FSM : ajout de l'état WAIT_COLOR (fix bug 4)
-    -- =========================================================================
+    -- WAIT_COLOR est un etat technique qui separe proprement :
+    -- 1) la demande d'avance au LFSR
+    -- 2) le lancement du timer une fois la nouvelle couleur stable
     type fsm_state is (IDLE, NEW_ROUND, WAIT_COLOR, WAIT_RESPONSE, END_GAME);
     signal state : fsm_state := IDLE;
 
-    -- =========================================================================
-    -- Signaux internes
-    -- =========================================================================
     signal rnd_s          : STD_LOGIC_VECTOR(3 downto 0);
     signal lfsr_en        : STD_LOGIC := '0';
     signal timer_start    : STD_LOGIC := '0';
@@ -128,8 +118,8 @@ architecture Behavioral of game_controller is
     signal score_reset    : STD_LOGIC := '0';
     signal start_d        : STD_LOGIC := '0';
 
-    -- Compteur pour WAIT_COLOR : attend 100 001 cycles (> 1 période 1kHz)
-    -- pour garantir que le LFSR a avancé avant de lancer le timer (fix bug 4)
+    -- Un peu plus d'une periode 1 kHz pour garantir que le pulse lfsr_en
+    -- d'un seul cycle a bien ete consomme par le LFSR.
     signal color_wait_cnt : integer range 0 to 100_001 := 0;
 
     function is_binary4(v : STD_LOGIC_VECTOR(3 downto 0)) return boolean is
@@ -142,9 +132,6 @@ architecture Behavioral of game_controller is
 
 begin
 
-    -- =========================================================================
-    -- Instanciations
-    -- =========================================================================
     U_LFSR : lfsr4
         port map (CLK => CLK, RESET => RESET, ENABLE => lfsr_en, RND => rnd_s);
 
@@ -163,12 +150,7 @@ begin
                   BTN_R => BTN_R, BTN_G => BTN_G, BTN_B => BTN_B,
                   VALID_HIT => valid_hit_s, ERROR => error_s);
 
-    -- =========================================================================
-    -- Dérivation couleur depuis LFSR (valeur 4 bits modulo 3)
-    --   0 → Rouge (100)
-    --   1 → Vert  (010)
-    --   2 → Bleu  (001)
-    -- =========================================================================
+    -- Derivation de la couleur a partir de la valeur pseudo-aleatoire.
     process(rnd_s)
         variable color_idx : integer range 0 to 2;
     begin
@@ -184,9 +166,6 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- FSM principale
-    -- =========================================================================
     process(CLK, RESET)
     begin
         if RESET = '1' then
@@ -199,7 +178,7 @@ begin
             color_wait_cnt <= 0;
 
         elsif rising_edge(CLK) then
-            -- Signaux pulsés par défaut
+            -- Pulses d'un seul cycle par defaut.
             lfsr_en     <= '0';
             timer_start <= '0';
             score_reset <= '0';
@@ -207,35 +186,28 @@ begin
 
             case state is
 
-                -- --------------------------------------------------------------
                 when IDLE =>
                     checker_en <= '0';
-                    -- Attente front montant sur START
                     if START = '1' and start_d = '0' then
                         score_reset <= '1';
                         state       <= NEW_ROUND;
                     end if;
 
-                -- --------------------------------------------------------------
                 when NEW_ROUND =>
-                    -- Pulse LFSR enable : demande une avance au prochain tick 1kHz
                     lfsr_en        <= '1';
                     checker_en     <= '0';
                     color_wait_cnt <= 0;
-                    -- Ne pas lancer le timer ici : attendre que le LFSR ait avancé
                     state          <= WAIT_COLOR;
-
 
                 when WAIT_COLOR =>
                     checker_en <= '0';
                     if color_wait_cnt = 100_001 then
-                        timer_start <= '1';   -- couleur stable, on lance le timer
+                        timer_start <= '1';
                         state       <= WAIT_RESPONSE;
                     else
                         color_wait_cnt <= color_wait_cnt + 1;
                     end if;
 
-                -- --------------------------------------------------------------
                 when WAIT_RESPONSE =>
                     checker_en <= '1';
                     if gameover_s = '1' then
@@ -250,10 +222,8 @@ begin
                         end if;
                     end if;
 
-                -- --------------------------------------------------------------
                 when END_GAME =>
                     checker_en <= '0';
-                    -- Attente restart
                     if START = '1' and start_d = '0' then
                         score_reset <= '1';
                         state       <= NEW_ROUND;
@@ -266,16 +236,10 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Sorties LED stimulus LD3
-    -- =========================================================================
     LED3_R <= led_color_r(2);
     LED3_G <= led_color_r(1);
     LED3_B <= led_color_r(0);
 
-    -- =========================================================================
-    -- Sortie LED résultat LED0 (actif seulement en END_GAME)
-    -- =========================================================================
     process(state, score_s)
         variable sc : unsigned(3 downto 0);
     begin
@@ -284,7 +248,7 @@ begin
             if sc = 15 then
                 LED0_R <= '0'; LED0_G <= '1'; LED0_B <= '0';  -- Vert
             elsif sc >= 7 then
-                LED0_R <= '1'; LED0_G <= '1'; LED0_B <= '0';  -- Orange (R+G)
+                LED0_R <= '1'; LED0_G <= '1'; LED0_B <= '0';  -- Orange
             else
                 LED0_R <= '1'; LED0_G <= '0'; LED0_B <= '0';  -- Rouge
             end if;
@@ -293,7 +257,6 @@ begin
         end if;
     end process;
 
-    -- Score sur les LEDs standard
     SCORE_OUT <= score_s;
 
 end Behavioral;

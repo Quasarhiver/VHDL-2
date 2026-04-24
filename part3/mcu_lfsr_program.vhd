@@ -1,18 +1,18 @@
 -- =============================================================================
 -- Module      : mcu_lfsr_program.vhd
 -- Description : Sequenceur MCU dedie a la generation pseudo-aleatoire.
---               Conforme au PDF : feedback = bit3 XOR bit2 (X^4 + X^3 + 1)
---               Decalage gauche : next = {b2, b1, b0, feedback}
---               Sequence identique au lfsr4.vhd corrige (15 etats).
+--               Ce bloc ne genere pas sa propre horloge : il attend deja une
+--               horloge "MCU" lente en entree. Dans la partie 3, le top lui
+--               fournit explicitement une horloge a 1 kHz, conformement au PDF.
 --
---               Premiere execution (initialized=0) : init seed "1011" + boucle.
---               Executions suivantes (initialized=1) : boucle seule (addr 2-21).
+--               Le microprogramme reproduit le meme LFSR 4 bits que la partie 2 :
+--                 feedback = bit3 XOR bit2
+--                 next     = {b2, b1, b0, feedback}
 --
--- Corrections v2.0 :
---   - feedback corrige (bit3 XOR bit2 au lieu de bit3 XOR bit0)
---   - decalage gauche (next = {b2,b1,b0,feedback})
---   - ROM entierement reecrite (20 etapes de boucle, adresses 2-21)
---   - PC_DONE mis a jour de 23 a 21
+--               Premiere execution :
+--                 charge la seed "1011", puis calcule le premier etat
+--               Executions suivantes :
+--                 repart directement de la boucle principale
 -- Auteur      : Projet LogiGame - TE608 EFREI 2025-2026
 -- Cible       : Xilinx Artix-35T - Vivado / GHDL
 -- Revision    : 2.0 - Avril 2026
@@ -20,46 +20,18 @@
 -- Programme ROM (SELFCT[9:6] | SELROUTE[5:2] | SELOUT[1:0]) :
 --
 -- Init (addr 0-1) :
---   [0] BufA <- A_IN="1011"  ; SELFCT=A,   SELROUTE=BufA<-A_IN
---   [1] MC1  <- A (seed)     ; SELFCT=NOP, SELROUTE=MC1<-S
+--   [0] BufA <- A_IN = "1011"
+--   [1] MC1  <- seed
 --
--- Boucle (addr 2-21), etat courant MC1[3:0]={b3,b2,b1,b0} :
---
---   Phase A - {0,0,0,b3} dans MC2 (SRA x3) :
---   [2]  SELFCT=SRA, BufA <- MC1[3:0]
---   [3]  SELFCT=SRA, BufA <- S={0,b3,b2,b1}
---   [4]  SELFCT=SRA, BufA <- S={0,0,b3,b2}
---   [5]  SELFCT=NOP, MC2  <- S={0,0,0,b3}
---
---   Phase B - {0,0,b3,b2} dans BufB (SRA x2) :
---   [6]  SELFCT=SRA, BufA <- MC1[3:0]
---   [7]  SELFCT=SRA, BufA <- S={0,b3,b2,b1}
---   [8]  SELFCT=NOP, BufB <- S={0,0,b3,b2}
---
---   Phase C - XOR(MC2,BufB) -> {0,0,b3,feedback} dans BufA :
---   [9]  SELFCT=XOR, BufA <- MC2[3:0]={0,0,0,b3}
---   [10] SELFCT=SLA, BufA <- S=XOR={0,0,b3,feedback}
---
---   Phase D - SLA x3 -> {feedback,0,0,0} dans MC2 :
---   [11] SELFCT=SLA, BufA <- S={0,b3,feedback,0}
---   [12] SELFCT=SLA, BufA <- S={b3,feedback,0,0}
---   [13] SELFCT=NOP, MC2  <- S={feedback,0,0,0}
---
---   Phase E - SLA(MC1) -> {b2,b1,b0,0} dans BufA :
---   [14] SELFCT=SLA, BufA <- MC1[3:0]
---   [15] SELFCT=NOP, BufA <- S={b2,b1,b0,0}
---
---   Phase F - SRB x3 -> {0,0,0,feedback} dans BufB :
---   [16] SELFCT=SRB, BufB <- MC2[3:0]={feedback,0,0,0}
---   [17] SELFCT=SRB, BufB <- S={0,feedback,0,0}
---   [18] SELFCT=SRB, BufB <- S={0,0,feedback,0}
---   [19] SELFCT=OR,  BufB <- S={0,0,0,feedback}
---
---   Phase G - OR(BufA,BufB) -> {b2,b1,b0,feedback} dans MC1 :
---   [20] SELFCT=NOP, MC1  <- S={b2,b1,b0,feedback}
---
---   Phase H - affichage :
---   [21] SELFCT=NOP, SELOUT=01 -> RESOUT=MC1
+-- Boucle (addr 2-21), etat courant MC1[3:0] = {b3,b2,b1,b0} :
+--   [2:5]   forme {0,0,0,b3} dans MC2
+--   [6:8]   forme {0,0,b3,b2} dans BufB
+--   [9:10]  calcule feedback = b3 xor b2
+--   [11:13] deplace feedback jusqu'a {feedback,0,0,0} dans MC2
+--   [14:15] forme {b2,b1,b0,0} dans BufA
+--   [16:19] ramene feedback sur le bit de poids faible dans BufB
+--   [20]    OR final -> {b2,b1,b0,feedback} dans MC1
+--   [21]    affiche MC1
 -- =============================================================================
 
 library IEEE;
@@ -83,9 +55,6 @@ architecture Behavioral of mcu_lfsr_program is
     type rom_t   is array (0 to 31) of STD_LOGIC_VECTOR(9 downto 0);
     type state_t is (IDLE, RUN, DONE_ST);
 
-    -- =========================================================================
-    -- ROM 32 x 10 bits
-    -- =========================================================================
     constant ROM : rom_t := (
         -- Initialisation
         0  => "0001" & "0000" & "00",  -- SELFCT=A,   BufA <- A_IN="1011"
@@ -148,9 +117,8 @@ begin
     SELOUT   <= instr(1 downto 0);
     DONE     <= done_r;
 
-    -- =========================================================================
-    -- Sequenceur
-    -- =========================================================================
+    -- DONE dure un seul cycle de CLK.
+    -- Un START recu pendant RUN est ignore jusqu'au retour en IDLE.
     process(CLK, RESET)
     begin
         if RESET = '1' then
@@ -161,7 +129,7 @@ begin
             start_d     <= '0';
 
         elsif rising_edge(CLK) then
-            done_r <= '0';
+            done_r  <= '0';
             start_d <= START;
 
             case state is
@@ -173,7 +141,7 @@ begin
                         else
                             pc <= (others => '0');
                         end if;
-                        state   <= RUN;
+                        state <= RUN;
                     end if;
 
                 when RUN =>

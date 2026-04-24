@@ -1,15 +1,15 @@
 -- =============================================================================
 -- Module      : logigame_mcu_top.vhd  (Arty_Digilent_TopLevel - Partie 3)
 -- Description : Top-level final du projet LogiGame.
---               Remplace le LFSR VHDL natif de la Partie 2 par le coeur MCU
---               comme generateur pseudo-aleatoire.
+--               La partie 3 remplace le LFSR de la partie 2 par un coeur MCU
+--               pilote par microprogramme.
 --
 --               Architecture :
---                 mcu_lfsr_program -> lance une sequence d'instructions a la demande
---                 datapath         -> execute les instructions, MC1 = etat LFSR
---                 FSM jeu          -> derive la couleur via un vrai modulo 3
---
-
+--                 - un diviseur cree une horloge MCU a 1 kHz depuis CLK100MHZ
+--                 - mcu_lfsr_program fournit les micro-instructions
+--                 - datapath execute ces micro-instructions et livre l'etat LFSR
+--                 - la FSM de jeu reutilise timer, score et response_checker
+--                 - la couleur de LD3 est derivee via un vrai modulo 3
 -- Auteur      : Projet LogiGame - TE608 EFREI 2025-2026
 -- Cible       : Xilinx Artix-35T - Vivado
 -- Revision    : 2.0 - Avril 2026
@@ -34,9 +34,6 @@ end Arty_Digilent_TopLevel;
 
 architecture Behavioral of Arty_Digilent_TopLevel is
 
-    -- =========================================================================
-    -- Composants
-    -- =========================================================================
     component mcu_lfsr_program is
         Port (
             CLK      : in  STD_LOGIC;
@@ -102,43 +99,38 @@ architecture Behavioral of Arty_Digilent_TopLevel is
         );
     end component;
 
-    -- =========================================================================
-    -- Signaux
-    -- =========================================================================
-    signal clk_i      : STD_LOGIC;
-    signal clk_mcu    : STD_LOGIC := '0';
-    signal reset_i    : STD_LOGIC;
-    signal mcu_divcnt : integer range 0 to 49_999 := 0;
+    signal clk_i         : STD_LOGIC;
+    signal clk_mcu       : STD_LOGIC := '0';
+    signal reset_i       : STD_LOGIC;
+    signal mcu_divcnt    : integer range 0 to 49_999 := 0;
 
-    signal selfct_s   : STD_LOGIC_VECTOR(3 downto 0);
-    signal selroute_s : STD_LOGIC_VECTOR(3 downto 0);
-    signal selout_s   : STD_LOGIC_VECTOR(1 downto 0);
-    signal mcu_done   : STD_LOGIC;
+    signal selfct_s      : STD_LOGIC_VECTOR(3 downto 0);
+    signal selroute_s    : STD_LOGIC_VECTOR(3 downto 0);
+    signal selout_s      : STD_LOGIC_VECTOR(1 downto 0);
+    signal mcu_done      : STD_LOGIC;
     signal mcu_done_meta : STD_LOGIC := '0';
     signal mcu_done_sync : STD_LOGIC := '0';
-    signal mcu_start  : STD_LOGIC := '0';
+    signal mcu_start     : STD_LOGIC := '0';
 
-    signal resout_s   : STD_LOGIC_VECTOR(7 downto 0);
-    signal led_color_s: STD_LOGIC_VECTOR(2 downto 0);
+    signal resout_s      : STD_LOGIC_VECTOR(7 downto 0);
+    signal led_color_s   : STD_LOGIC_VECTOR(2 downto 0);
 
-    signal timer_start: STD_LOGIC;
-    signal timeout_s  : STD_LOGIC;
+    signal timer_start   : STD_LOGIC;
+    signal timeout_s     : STD_LOGIC;
 
-    signal valid_hit_s: STD_LOGIC;
-    signal error_s    : STD_LOGIC;
-    signal score_s    : STD_LOGIC_VECTOR(3 downto 0);
-    signal gameover_s : STD_LOGIC;
-    signal score_rst  : STD_LOGIC;
+    signal valid_hit_s   : STD_LOGIC;
+    signal error_s       : STD_LOGIC;
+    signal score_s       : STD_LOGIC_VECTOR(3 downto 0);
+    signal gameover_s    : STD_LOGIC;
+    signal score_rst     : STD_LOGIC;
 
-    signal checker_en : STD_LOGIC;
+    signal checker_en    : STD_LOGIC;
 
-    -- FSM
     type fsm_t is (IDLE, WAIT_MCU, WAIT_RESPONSE, END_GAME);
-    signal state       : fsm_t  := IDLE;
-    signal btn0_d      : STD_LOGIC := '0';
-    signal start_pulse : STD_LOGIC := '0';
+    signal state         : fsm_t  := IDLE;
+    signal btn0_d        : STD_LOGIC := '0';
+    signal start_pulse   : STD_LOGIC := '0';
 
-    -- LEDs internes
     signal led3_r_s, led3_g_s, led3_b_s : STD_LOGIC;
     signal led0_r_s, led0_g_s, led0_b_s : STD_LOGIC;
 
@@ -155,9 +147,9 @@ begin
     clk_i   <= CLK100MHZ;
     reset_i <= btn(0);
 
-    -- =========================================================================
-    -- BTN0 : reset quand appuye, pulse START au relachement
-    -- =========================================================================
+    -- BTN0 sert a la fois de reset materiel et de bouton start :
+    --   appui   -> reset actif
+    --   relache -> impulsion start_pulse d'un cycle a 100 MHz
     process(clk_i)
     begin
         if rising_edge(clk_i) then
@@ -169,9 +161,8 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Horloge MCU 1 kHz derivee de CLK100MHZ
-    -- =========================================================================
+    -- Horloge MCU 1 kHz. Le sequenceur MCU et le datapath vivent dans ce
+    -- domaine lent afin de respecter explicitement la contrainte FMCU = 1 kHz.
     process(clk_i, reset_i)
     begin
         if reset_i = '1' then
@@ -187,9 +178,8 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Synchronisation du DONE MCU vers le domaine 100 MHz
-    -- =========================================================================
+    -- DONE est produit dans le domaine 1 kHz puis resynchronise en 100 MHz
+    -- avant d'etre consomme par la FSM de jeu.
     process(clk_i, reset_i)
     begin
         if reset_i = '1' then
@@ -201,9 +191,6 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- MCU LFSR Program
-    -- =========================================================================
     U_MCU : mcu_lfsr_program
         port map (CLK => clk_mcu, RESET => reset_i,
                   START    => mcu_start,
@@ -212,9 +199,7 @@ begin
                   SELOUT   => selout_s,
                   DONE     => mcu_done);
 
-    -- =========================================================================
-    -- Datapath : A_IN="1011" fournit le seed pour l'initialisation
-    -- =========================================================================
+    -- A_IN = "1011" fournit la seed de reference pour la premiere execution.
     U_DP : datapath
         port map (CLK => clk_mcu, RESET => reset_i,
                   A_IN     => "1011", B_IN => "1011",
@@ -226,12 +211,6 @@ begin
                   SROUTL   => open,
                   SROUTR   => open);
 
-    -- =========================================================================
-    -- Derivation couleur depuis la valeur pseudo-aleatoire (modulo 3)
-    --   0 -> Rouge (100)
-    --   1 -> Vert  (010)
-    --   2 -> Bleu  (001)
-    -- =========================================================================
     process(resout_s)
         variable color_idx : integer range 0 to 2;
     begin
@@ -247,18 +226,12 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Timer difficulte
-    -- =========================================================================
     U_TIMER : difficulty_timer
         port map (CLK => clk_i, RESET => reset_i,
                   START    => timer_start,
                   SW_LEVEL => sw(3 downto 2),
                   TIMEOUT  => timeout_s);
 
-    -- =========================================================================
-    -- Score
-    -- =========================================================================
     U_SCORE : score_counter
         port map (CLK => clk_i, RESET => score_rst,
                   VALID_HIT => valid_hit_s,
@@ -266,9 +239,6 @@ begin
                   SCORE     => score_s,
                   GAME_OVER => gameover_s);
 
-    -- =========================================================================
-    -- Response Checker
-    -- =========================================================================
     U_CHECK : response_checker
         port map (CLK => clk_i, RESET => reset_i,
                   ENABLE    => checker_en,
@@ -280,9 +250,6 @@ begin
                   VALID_HIT => valid_hit_s,
                   ERROR     => error_s);
 
-    -- =========================================================================
-    -- FSM Jeu
-    -- =========================================================================
     process(clk_i, reset_i)
     begin
         if reset_i = '1' then
@@ -310,7 +277,9 @@ begin
 
                 when WAIT_MCU =>
                     checker_en <= '0';
-                    mcu_start  <= '1';
+                    -- mcu_start reste a '1' le temps que le domaine 1 kHz voie
+                    -- la demande de nouvelle valeur.
+                    mcu_start <= '1';
                     if mcu_done_sync = '1' then
                         timer_start <= '1';
                         mcu_start   <= '0';
@@ -325,9 +294,6 @@ begin
                         state      <= END_GAME;
                     elsif valid_hit_s = '1' then
                         checker_en <= '0';
-                        -- FIX : si ce hit porte le score a 15, aller directement
-                        -- en END_GAME sans passer par WAIT_MCU, pour eviter le
-                        -- round fantome du au delai d'1 cycle de gameover_s.
                         if unsigned(score_s) = 14 then
                             state <= END_GAME;
                         else
@@ -352,16 +318,10 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- LEDs stimulus LD3
-    -- =========================================================================
     led3_r_s <= led_color_s(2);
     led3_g_s <= led_color_s(1);
     led3_b_s <= led_color_s(0);
 
-    -- =========================================================================
-    -- LED0 resultat final (visible uniquement en END_GAME)
-    -- =========================================================================
     process(state, score_s)
     begin
         if state = END_GAME then
@@ -377,9 +337,6 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Mapping sorties physiques
-    -- =========================================================================
     led    <= score_s;
     led3_r <= led3_r_s; led3_g <= led3_g_s; led3_b <= led3_b_s;
     led0_r <= led0_r_s; led0_g <= led0_g_s; led0_b <= led0_b_s;
