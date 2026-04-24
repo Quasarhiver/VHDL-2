@@ -4,9 +4,7 @@
 --               Entrées A et B sur 4 bits signés, sortie S sur 8 bits.
 --               Ports de décalage série : SRINL (gauche), SRINR (droite),
 --               SROUTL (bit sortant gauche), SROUTR (bit sortant droite).
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T (Arty A7) – Vivado / GHDL
--- Révision    : 1.0 – Avril 2026
+
 -- =============================================================================
 -- Table SEL_FCT :
 --  0000 NOP      S=0,  SROUTL=0, SROUTR=0
