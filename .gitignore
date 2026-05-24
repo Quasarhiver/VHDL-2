@@ -1,0 +1,20 @@
+# Artefacts de build GHDL
+.ghdl_*/
+*.cf
+work-obj*.cf
+*.o
+
+# Executables de simulation elabores par GHDL
+tb_*
+!tb_*.vhd
+
+# Dumps de formes d'ondes
+*.ghw
+*.vcd
+*.fst
+
+# Fichiers projet / temporaires Vivado
+*.jou
+*.log
+.Xil/
+vivado*.str
