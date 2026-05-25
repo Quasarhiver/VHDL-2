@@ -3,8 +3,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity button_debouncer is
     Generic (
-        -- Duree de stabilite exigee. 200 000 cycles a 100 MHz = 2 ms, largement
-        -- au-dessus des rebonds (< 1 ms) des poussoirs tactiles de la carte Arty.
+
         DEBOUNCE_CYCLES : integer := 200000
     );
     Port (
