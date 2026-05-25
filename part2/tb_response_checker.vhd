@@ -1,13 +1,4 @@
--- =============================================================================
--- Module      : tb_response_checker.vhd
--- Description : Testbench dedie au verificateur de reponse.
---               Verifie :
---               - bonne reponse
---               - mauvaise reponse
---               - timeout
---               - ignore les evenements si ENABLE='0'
---               - n'accepte pas un bouton maintenu entre deux manches
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -79,9 +70,7 @@ begin
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
 
-        -- =====================================================================
-        -- Test 1 : bonne reponse rouge
-        -- =====================================================================
+       
         report "--- Test 1 : bonne reponse rouge ---" severity note;
         LED_COLOR_tb <= "100";
         ENABLE_tb    <= '1';
@@ -97,7 +86,7 @@ begin
         assert VALID_HIT_tb = '0' and ERROR_tb = '0'
             report "FAIL T1: les sorties doivent revenir a 0 apres l'impulsion" severity error;
 
-        -- Meme manche : un second appui doit etre ignore.
+       
         BTN_R_tb <= '1';
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
@@ -108,9 +97,7 @@ begin
         wait until rising_edge(CLK_tb);
         wait for 1 ns;
 
-        -- =====================================================================
-        -- Test 2 : mauvaise reponse
-        -- =====================================================================
+ 
         report "--- Test 2 : mauvaise reponse ---" severity note;
         LED_COLOR_tb <= "010";
         ENABLE_tb    <= '1';
@@ -128,9 +115,7 @@ begin
         ENABLE_tb <= '0';
         wait until rising_edge(CLK_tb);
 
-        -- =====================================================================
-        -- Test 3 : timeout
-        -- =====================================================================
+        
         report "--- Test 3 : timeout ---" severity note;
         LED_COLOR_tb <= "001";
         ENABLE_tb    <= '1';
@@ -147,9 +132,6 @@ begin
         ENABLE_tb <= '0';
         wait until rising_edge(CLK_tb);
 
-        -- =====================================================================
-        -- Test 4 : si ENABLE='0', aucun evenement ne doit etre pris en compte
-        -- =====================================================================
         report "--- Test 4 : ignore quand ENABLE=0 ---" severity note;
         LED_COLOR_tb <= "100";
         TIMEOUT_tb   <= '1';
@@ -162,9 +144,7 @@ begin
         BTN_R_tb   <= '0';
         wait until rising_edge(CLK_tb);
 
-        -- =====================================================================
-        -- Test 5 : bouton maintenu entre deux manches
-        -- =====================================================================
+    
         report "--- Test 5 : bouton maintenu entre deux manches ---" severity note;
         BTN_R_tb  <= '1';
         ENABLE_tb <= '0';
