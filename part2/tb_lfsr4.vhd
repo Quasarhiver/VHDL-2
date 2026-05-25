@@ -1,7 +1,4 @@
--- =============================================================================
--- Module      : tb_lfsr4.vhd
--- Description : Testbench du LFSR4. Vérifie la séquence de 15 états.
--- =============================================================================
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -41,8 +38,7 @@ begin
         port map (CLK => CLK_tb, RESET => RESET_tb, ENABLE => ENABLE_tb, RND => RND_tb);
 
     process
-        -- Pour tester sans attendre 100k cycles, on envoie des pulses ENABLE
-        -- directement sur l'horloge (simulation fonctionnelle)
+
     begin
         report "===== Testbench LFSR4 =====" severity note;
 
@@ -52,7 +48,7 @@ begin
         RESET_tb <= '0';
         wait for CLK_P;
 
-        -- Vérification seed initial
+     
         wait for 2 ns;
         assert RND_tb = "1011"
             report "FAIL: seed initial attendu 1011, obtenu " &
@@ -60,7 +56,7 @@ begin
         report "Seed initial : " & integer'image(to_integer(unsigned(RND_tb))) &
                " (attendu 11=1011)" severity note;
 
-        -- Vérification de la séquence maximale de 15 états non nuls.
+
         report "--- Séquence LFSR (15 pas) ---" severity note;
         ENABLE_tb <= '1';
         for i in 0 to 14 loop
