@@ -1,12 +1,4 @@
--- =============================================================================
--- Module      : tb_mcu_lfsr_program.vhd
--- Description : Testbench dedie au generateur pseudo-aleatoire MCU.
---               Verifie :
---               - qu'aucune execution n'a lieu sans START
---               - que DONE est emis apres chaque demande
---               - que la sequence de 15 etats attendue est produite
---               - que l'etat interne est preserve entre les demandes
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -105,14 +97,14 @@ begin
         wait for 5 * CLK_P;
         RESET_tb <= '0';
 
-        -- Sans START, aucune execution ne doit se produire.
+        
         wait for 1200 us;
         assert DONE_tb = '0'
             report "FAIL: DONE actif sans demande START" severity error;
         assert RESOUT_tb = "00000000"
             report "FAIL: RESOUT devrait rester nul avant la premiere execution" severity error;
 
-        -- Verification de la sequence complete.
+       
         for i in 0 to 15 loop
             START_tb <= '1';
             wait for CLK_P;
