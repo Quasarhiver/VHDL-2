@@ -1,23 +1,4 @@
--- =============================================================================
--- Module      : tb_logigame_trng_top.vhd
--- Description : Banc de test d'integration pour la Partie 3 variante BRUIT.
---               Verifie que le jeu fonctionne quand la couleur est tiree
---               directement du vrai generateur d'aleatoire materiel (TRNG).
---
---               btn[0] passe par un anti-rebond (~2 ms) : les appuis de start
---               du test durent donc plusieurs ms.
---
---               NOTE IMPORTANTE : en SIMULATION, les oscillateurs en anneau
---               sont deterministes (delais 'after' fixes). On ne peut donc PAS
---               figer une couleur attendue. Le test lit la couleur affichee sur
---               LD3, verifie qu'elle est un code one-hot VALIDE et STABLE, et
---               appuie sur le bon (ou le mauvais) bouton en consequence. Le vrai
---               caractere imprevisible du TRNG ne se manifeste que sur le FPGA
---               reel (bruit thermique).
---
---               Scenario : demarrage -> bonne reponse -> bonne reponse ->
---               mauvaise reponse -> redemarrage.
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -75,8 +56,7 @@ begin
     CLK100MHZ <= not CLK100MHZ after CLK_PERIOD / 2;
 
     process
-        -- Appui de start : maintenu DEB_SIM+5 cycles (au-dela du debounce),
-        -- puis DEB_SIM+5 cycles pour propager le relachement et generer le pulse.
+       
         procedure start_press is
         begin
             btn(0) <= '1';
@@ -115,8 +95,7 @@ begin
             end if;
         end procedure;
 
-        -- Verifie que LD3 affiche un code couleur one-hot valide ET qu'il reste
-        -- stable pendant la manche (corrige m-6 : assertions non tautologiques).
+       
         procedure check_color_valid_stable is
             variable r0, g0, b0 : STD_LOGIC;
         begin
@@ -136,9 +115,7 @@ begin
         btn <= "0000";
         wait for 10 * CLK_PERIOD;
 
-        -- =====================================================================
-        -- Demarrage
-        -- =====================================================================
+        
         report "--- Demarrage de la partie ---" severity note;
         start_press;
         wait for SETTLE;
@@ -147,9 +124,6 @@ begin
             report "FAIL: le score initial devrait etre nul" severity error;
         check_color_valid_stable;
 
-        -- =====================================================================
-        -- Manche 1 : bonne reponse
-        -- =====================================================================
         report "--- Manche 1 : bonne reponse ---" severity note;
         press_correct_btn;
         wait for SETTLE;
@@ -158,9 +132,7 @@ begin
             report "FAIL: le score devrait valoir 1 apres la 1ere bonne reponse" severity error;
         check_color_valid_stable;
 
-        -- =====================================================================
-        -- Manche 2 : bonne reponse
-        -- =====================================================================
+       
         report "--- Manche 2 : bonne reponse ---" severity note;
         press_correct_btn;
         wait for SETTLE;
@@ -170,9 +142,7 @@ begin
         assert led0_r = '0' and led0_g = '0' and led0_b = '0'
             report "FAIL: LED0 devrait rester eteinte avant le game over" severity error;
 
-        -- =====================================================================
-        -- Manche 3 : mauvaise reponse -> END_GAME
-        -- =====================================================================
+     
         report "--- Manche 3 : mauvaise reponse ---" severity note;
         press_wrong_btn;
         wait for SETTLE;
@@ -182,9 +152,7 @@ begin
         assert led0_r = '1' and led0_g = '0' and led0_b = '0'
             report "FAIL: LED0 devrait etre rouge pour un score final de 2" severity error;
 
-        -- =====================================================================
-        -- Redemarrage
-        -- =====================================================================
+       
         report "--- Redemarrage ---" severity note;
         start_press;
         wait for SETTLE;
