@@ -1,29 +1,4 @@
--- =============================================================================
--- Module      : datapath.vhd
--- Description : Chemin de données du cœur MCU.
---               Instancie l'UAL et gère tous les registres internes :
---               BufferA (8b), BufferB (8b), MEMCACHE1 (8b), MEMCACHE2 (8b),
---               MEMSELFCT (4b), MEMSELOUT (2b), MEMSRINL (1b), MEMSRINR (1b).
---               Le routage (SELROUTE 4 bits, 16 cas) et la sortie (SELOUT 2 bits)
---               sont entièrement implémentés.
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado / GHDL
--- Révision    : 1.0 – Avril 2026
--- =============================================================================
--- Ports :
---   CLK      : horloge 100 MHz (front montant actif)
---   RESET    : reset asynchrone actif haut
---   A_IN     : entrée opérande A (4 bits)
---   B_IN     : entrée opérande B (4 bits)
---   SRINL    : bit série entrant gauche
---   SRINR    : bit série entrant droit
---   SELFCT   : code opération UAL (4 bits) – mémorisé dans MEMSELFCT
---   SELROUTE : sélection du transfert de données (4 bits)
---   SELOUT   : sélection de la sortie RESOUT (2 bits) – mémorisé dans MEMSELOUT
---   RESOUT   : résultat 8 bits
---   SROUTL   : bit sortant gauche (UAL)
---   SROUTR   : bit sortant droit  (UAL)
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -52,9 +27,7 @@ end datapath;
 
 architecture Behavioral of datapath is
 
-    -- =========================================================================
-    -- Composant UAL
-    -- =========================================================================
+   
     component ual is
         Port (
             A       : in  STD_LOGIC_VECTOR(3 downto 0);
@@ -68,9 +41,7 @@ architecture Behavioral of datapath is
         );
     end component;
 
-    -- =========================================================================
-    -- Registres internes
-    -- =========================================================================
+
     signal BufferA    : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
     signal BufferB    : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
     signal MEMCACHE1  : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
@@ -80,9 +51,7 @@ architecture Behavioral of datapath is
     signal MEMSRINL   : STD_LOGIC := '0';
     signal MEMSRINR   : STD_LOGIC := '0';
 
-    -- =========================================================================
-    -- Signaux de connexion UAL
-    -- =========================================================================
+
     signal ual_A      : STD_LOGIC_VECTOR(3 downto 0);
     signal ual_B      : STD_LOGIC_VECTOR(3 downto 0);
     signal ual_S      : STD_LOGIC_VECTOR(7 downto 0);
@@ -91,10 +60,7 @@ architecture Behavioral of datapath is
 
 begin
 
-    -- =========================================================================
-    -- Instanciation de l'UAL
-    -- Les opérandes de l'UAL sont les 4 LSB des buffers
-    -- =========================================================================
+   
     UAL_INST : ual
         port map (
             A       => ual_A,
@@ -107,21 +73,19 @@ begin
             SROUTR  => ual_SROUTR
         );
 
-    -- Les 4 LSBs des buffers alimentent l'UAL
+
     ual_A <= BufferA(3 downto 0);
     ual_B <= BufferB(3 downto 0);
 
-    -- Sorties série directement issues de l'UAL (combinatoires)
+  
     SROUTL <= ual_SROUTL;
     SROUTR <= ual_SROUTR;
 
-    -- =========================================================================
-    -- Process séquentiel : front montant CLK, reset asynchrone actif haut
-    -- =========================================================================
+ 
     process(CLK, RESET)
     begin
         if RESET = '1' then
-            -- Reset asynchrone : tout à zéro
+           
             BufferA   <= (others => '0');
             BufferB   <= (others => '0');
             MEMCACHE1 <= (others => '0');
@@ -133,93 +97,85 @@ begin
 
         elsif rising_edge(CLK) then
 
-            -- -----------------------------------------------------------------
-            -- Mémorisation systématique des signaux de contrôle
-            -- (MEM_SEL_FCT, MEM_SEL_OUT, MEM_SRINL, MEM_SRINR chargés à chaque cycle)
-            -- -----------------------------------------------------------------
+          
             MEMSELFCT <= SELFCT;
             MEMSELOUT <= SELOUT;
             MEMSRINL  <= SRINL;
             MEMSRINR  <= SRINR;
 
-            -- -----------------------------------------------------------------
-            -- Routage des données selon SELROUTE
-            -- (le routage définit le transfert qui s'effectue sur ce front montant)
-            -- -----------------------------------------------------------------
             case SELROUTE is
 
-                -- 0000 : BufferA ← A_IN (zero-étendu à 8 bits)
+               
                 when "0000" =>
                     BufferA <= "0000" & A_IN;
 
-                -- 0001 : BufferB ← B_IN
+               
                 when "0001" =>
                     BufferB <= "0000" & B_IN;
 
-                -- 0010 : BufferA[3:0] ← S[3:0]  (4 LSB de S → 4 LSB de BufferA)
+               
                 when "0010" =>
                     BufferA(3 downto 0) <= ual_S(3 downto 0);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);  -- inchangé
 
-                -- 0011 : BufferA[7:4] ← S[3:0]  (4 LSB de S → 4 MSB de BufferA)
+               
                 when "0011" =>
                     BufferA(7 downto 4) <= ual_S(3 downto 0);
                     BufferA(3 downto 0) <= BufferA(3 downto 0);  -- inchangé
 
-                -- 0100 : BufferB[3:0] ← S[3:0]
+              
                 when "0100" =>
                     BufferB(3 downto 0) <= ual_S(3 downto 0);
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
 
-                -- 0101 : BufferB[7:4] ← S[3:0]
+               
                 when "0101" =>
                     BufferB(7 downto 4) <= ual_S(3 downto 0);
                     BufferB(3 downto 0) <= BufferB(3 downto 0);
 
-                -- 0110 : MEMCACHE1 ← S  (8 bits complets)
+
                 when "0110" =>
                     MEMCACHE1 <= ual_S;
 
-                -- 0111 : MEMCACHE2 ← S
+                
                 when "0111" =>
                     MEMCACHE2 <= ual_S;
 
-                -- 1000 : BufferA[3:0] ← MEMCACHE1[3:0]
+              
                 when "1000" =>
                     BufferA(3 downto 0) <= MEMCACHE1(3 downto 0);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);
 
-                -- 1001 : BufferA[3:0] ← MEMCACHE1[7:4]  (nibble fort → nibble faible de A)
+               
                 when "1001" =>
                     BufferA(3 downto 0) <= MEMCACHE1(7 downto 4);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);
 
-                -- 1010 : BufferB[3:0] ← MEMCACHE1[3:0]
+                
                 when "1010" =>
                     BufferB(3 downto 0) <= MEMCACHE1(3 downto 0);
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
 
-                -- 1011 : BufferB[3:0] ← MEMCACHE1[7:4]
                 when "1011" =>
                     BufferB(3 downto 0) <= MEMCACHE1(7 downto 4);
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
 
-                -- 1100 : BufferA[3:0] ← MEMCACHE2[3:0]
+         
                 when "1100" =>
                     BufferA(3 downto 0) <= MEMCACHE2(3 downto 0);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);
 
-                -- 1101 : BufferA[3:0] ← MEMCACHE2[7:4]
+                
                 when "1101" =>
                     BufferA(3 downto 0) <= MEMCACHE2(7 downto 4);
                     BufferA(7 downto 4) <= BufferA(7 downto 4);
 
-                -- 1110 : BufferB[3:0] ← MEMCACHE2[3:0]
+              
                 when "1110" =>
                     BufferB(3 downto 0) <= MEMCACHE2(3 downto 0);
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
 
-                -- 1111 : BufferB[3:0] ← MEMCACHE2[7:4]
+              
                 when "1111" =>
                     BufferB(3 downto 0) <= MEMCACHE2(7 downto 4);
                     BufferB(7 downto 4) <= BufferB(7 downto 4);
@@ -231,9 +187,6 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Sortie RESOUT (combinatoire, basée sur MEMSELOUT mémorisé)
-    -- =========================================================================
     process(MEMSELOUT, MEMCACHE1, MEMCACHE2, ual_S)
     begin
         case MEMSELOUT is
