@@ -25,7 +25,6 @@ architecture Behavioral of tb_logigame_trng_top is
 
     constant CLK_PERIOD : time    := 10 ns;
     constant DEB_SIM    : integer := 5;
-    -- 2 ms : couvre le tick 1 kHz du MCU (jusqu a 1 ms) + execution instructions
     constant SETTLE     : time    := 2 ms;
 
     signal CLK100MHZ : STD_LOGIC := '0';
