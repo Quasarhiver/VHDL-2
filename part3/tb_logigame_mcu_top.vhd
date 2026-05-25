@@ -1,13 +1,4 @@
--- =============================================================================
--- Module      : tb_logigame_mcu_top.vhd
--- Description : Banc de test d'integration globale pour la Partie 3.
---               Verifie un scenario joueur complet :
---               - demarrage via btn0 (reset puis start au relachement)
---               - premiere manche reussie
---               - deuxieme manche ratee
---               - affichage du score final
---               - redemarrage
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -101,15 +92,12 @@ begin
     begin
         report "===== Testbench LogiGame MCU Top =====" severity note;
 
-        -- Difficulte maximale pour accelerer les essais manuels, meme si le
-        -- timeout n'est pas utilise dans ce scenario.
+       
         sw  <= "1100";
         btn <= "0000";
         wait for 10 * CLK100MHZ_PERIOD;
 
-        -- =====================================================================
-        -- Demarrage : btn0 appuye puis relache
-        -- =====================================================================
+      
         report "--- Demarrage de la partie ---" severity note;
         pulse_btn(0);
         wait for WAIT_ROUND;
@@ -121,9 +109,7 @@ begin
         assert led3_r = '0' and led3_g = '1' and led3_b = '0'
             report "FAIL: premiere couleur attendue = vert (etat LFSR 0111=7, 7 mod 3=1)" severity error;
 
-        -- =====================================================================
-        -- Manche 1 : bonne reponse
-        -- =====================================================================
+      
         report "--- Manche 1 : bonne reponse ---" severity note;
         press_correct_btn;
         wait for WAIT_ROUND;
@@ -135,9 +121,7 @@ begin
         assert led3_r = '1' and led3_g = '0' and led3_b = '0'
             report "FAIL: deuxieme couleur attendue = rouge (etat LFSR 1111=15, 15 mod 3=0)" severity error;
 
-        -- =====================================================================
-        -- Manche 2 : mauvaise reponse -> END_GAME
-        -- =====================================================================
+       
         report "--- Manche 2 : mauvaise reponse ---" severity note;
         press_wrong_btn;
         wait for 10 * CLK100MHZ_PERIOD;
@@ -147,9 +131,6 @@ begin
         assert led0_r = '1' and led0_g = '0' and led0_b = '0'
             report "FAIL: LED0 devrait etre rouge pour un score final de 1" severity error;
 
-        -- =====================================================================
-        -- Redemarrage
-        -- =====================================================================
         report "--- Redemarrage ---" severity note;
         pulse_btn(0);
         wait for 10 * CLK100MHZ_PERIOD;
