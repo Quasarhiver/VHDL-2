@@ -1,24 +1,3 @@
--- =============================================================================
--- Module      : logigame_seed_top.vhd  (Arty_Digilent_TopLevel - Partie 3 SEED)
--- Description : Variante SEED de la Partie 3.
---               Un LFSR libre (lfsr4_freerun) tourne en permanence a 100 MHz.
---               A chaque nouvelle manche, l etat courant du LFSR est capture
---               comme seed et passe en A_IN du datapath.
---               Le cœur MCU (mcu_lfsr_program + datapath) calcule un pas LFSR
---               par manche depuis ce seed via ses instructions internes.
---               La couleur affichee sur LD3 est derivee de RESOUT[3:0] mod 3.
---
---               Pour forcer le rechargement du seed a chaque manche, le MCU
---               est pulse-resette (mcu_rst_s) 1 cycle avant chaque START afin
---               de remettre son flag initialized a 0 et le forcer a relire A_IN.
---
---               FSM : IDLE -> WAIT_MCU -> WAIT_RESPONSE -> NEW_SEED -> WAIT_MCU
---                                                       -> END_GAME
---
--- Auteur      : Projet LogiGame - TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T - Vivado
--- =============================================================================
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
