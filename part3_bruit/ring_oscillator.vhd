@@ -5,11 +5,11 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity ring_oscillator is
     Generic (
-        N_STAGES : integer := 5    -- nombre d'inverseurs, DOIT etre impair
+        N_STAGES : integer := 5   
     );
     Port (
-        EN  : in  STD_LOGIC;       -- '1' = anneau actif (oscille)
-        OSC : out STD_LOGIC        -- sortie oscillante
+        EN  : in  STD_LOGIC;      
+        OSC : out STD_LOGIC        
     );
 end ring_oscillator;
 
