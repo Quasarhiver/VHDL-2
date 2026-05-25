@@ -20,9 +20,6 @@ end Arty_Digilent_TopLevel;
 
 architecture Behavioral of Arty_Digilent_TopLevel is
 
-    -- =========================================================================
-    -- Composants
-    -- =========================================================================
     component button_debouncer is
         Generic ( DEBOUNCE_CYCLES : integer := 200000 );
         Port (
@@ -104,9 +101,7 @@ architecture Behavioral of Arty_Digilent_TopLevel is
         );
     end component;
 
-    -- =========================================================================
-    -- Signaux
-    -- =========================================================================
+    
     signal clk_i      : STD_LOGIC;
     signal reset_i    : STD_LOGIC;
 
@@ -114,64 +109,58 @@ architecture Behavioral of Arty_Digilent_TopLevel is
     signal btn0_d     : STD_LOGIC := '0';
     signal start_pulse: STD_LOGIC := '0';
 
-    -- LFSR libre : tourne en permanence, jamais resette
     signal lfsr_rnd   : STD_LOGIC_VECTOR(3 downto 0);
 
-    -- Seed capturee a chaque nouvelle manche -> A_IN du datapath
+   
     signal seed_s     : STD_LOGIC_VECTOR(3 downto 0) := "1011";
 
-    -- Reset local du MCU/datapath (pulse 1 cycle pour effacer 'initialized')
+  
     signal mcu_rst_s  : STD_LOGIC := '0';
 
-    -- MCU -> Datapath
+
     signal selfct_s   : STD_LOGIC_VECTOR(3 downto 0);
     signal selroute_s : STD_LOGIC_VECTOR(3 downto 0);
     signal selout_s   : STD_LOGIC_VECTOR(1 downto 0);
     signal mcu_done   : STD_LOGIC;
     signal mcu_start  : STD_LOGIC;
 
-    -- Datapath -> couleur
+ 
     signal resout_s   : STD_LOGIC_VECTOR(7 downto 0);
     signal led_color_s: STD_LOGIC_VECTOR(2 downto 0);
 
-    -- Timer
+
     signal timer_start: STD_LOGIC;
     signal timeout_s  : STD_LOGIC;
 
-    -- Score
+
     signal valid_hit_s: STD_LOGIC;
     signal error_s    : STD_LOGIC;
     signal score_s    : STD_LOGIC_VECTOR(3 downto 0);
     signal gameover_s : STD_LOGIC;
     signal score_rst  : STD_LOGIC;
 
-    -- Checker
+   
     signal checker_en : STD_LOGIC;
 
-    -- FSM jeu
-    -- NEW_SEED : pulse reset MCU (efface initialized), capture seed, puis lance MCU
+ 
     type fsm_t is (IDLE, WAIT_MCU, WAIT_RESPONSE, NEW_SEED, END_GAME);
     signal state      : fsm_t := IDLE;
 
-    -- LEDs
+
     signal led0_r_s, led0_g_s, led0_b_s : STD_LOGIC;
 
 begin
 
     clk_i <= CLK100MHZ;
 
-    -- =========================================================================
-    -- Anti-rebond btn[0]
-    -- =========================================================================
+
     U_DEB : button_debouncer
         generic map (DEBOUNCE_CYCLES => DEBOUNCE_CYCLES)
         port map (CLK => clk_i, BTN_RAW => btn(0), BTN_CLEAN => btn0_clean);
 
     reset_i <= btn0_clean;
 
-    -- =========================================================================
-    -- Detection front descendant btn0_clean -> pulse start d un cycle
-    -- =========================================================================
+
     process(clk_i)
     begin
         if rising_edge(clk_i) then
@@ -183,25 +172,16 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- LFSR libre : tourne a 100 MHz, jamais connecte au reset
-    -- =========================================================================
+
     U_LFSR : lfsr4_freerun
         port map (CLK => clk_i, RND => lfsr_rnd);
 
-    -- =========================================================================
-    -- MCU sequenceur
-    -- mcu_rst_s permet de remettre 'initialized' a 0 entre les manches
-    -- pour forcer le rechargement de A_IN (nouveau seed) a chaque fois
-    -- =========================================================================
+   
     U_MCU : mcu_lfsr_program
         port map (CLK => clk_i, RESET => reset_i or mcu_rst_s, START => mcu_start,
                   SELFCT => selfct_s, SELROUTE => selroute_s,
                   SELOUT => selout_s, DONE => mcu_done);
 
-    -- =========================================================================
-    -- Datapath : A_IN = seed capture du LFSR libre a chaque manche
-    -- =========================================================================
     U_DP : datapath
         port map (CLK => clk_i, RESET => reset_i or mcu_rst_s,
                   A_IN => seed_s, B_IN => "1011",
@@ -209,12 +189,7 @@ begin
                   SELFCT => selfct_s, SELROUTE => selroute_s, SELOUT => selout_s,
                   RESOUT => resout_s, SROUTL => open, SROUTR => open);
 
-    -- =========================================================================
-    -- Couleur derivee de RESOUT[3:0] mod 3
-    --   0 -> Rouge (100)
-    --   1 -> Vert  (010)
-    --   2 -> Bleu  (001)
-    -- =========================================================================
+    
     process(resout_s)
     begin
         case to_integer(unsigned(resout_s(3 downto 0))) mod 3 is
@@ -224,49 +199,24 @@ begin
         end case;
     end process;
 
-    -- =========================================================================
-    -- Timer difficulte
-    -- =========================================================================
+    
     U_TIMER : difficulty_timer
         port map (CLK => clk_i, RESET => reset_i, START => timer_start,
                   SW_LEVEL => sw(3 downto 2), TIMEOUT => timeout_s);
 
-    -- =========================================================================
-    -- Score
-    -- =========================================================================
+   
     U_SCORE : score_counter
         port map (CLK => clk_i, RESET => score_rst,
                   VALID_HIT => valid_hit_s, ERROR => error_s,
                   SCORE => score_s, GAME_OVER => gameover_s);
 
-    -- =========================================================================
-    -- Verificateur de reponse
-    -- =========================================================================
+   
     U_CHECK : response_checker
         port map (CLK => clk_i, RESET => reset_i, ENABLE => checker_en,
                   TIMEOUT => timeout_s, LED_COLOR => led_color_s,
                   BTN_R => btn(3), BTN_G => btn(2), BTN_B => btn(1),
                   VALID_HIT => valid_hit_s, ERROR => error_s);
 
-    -- =========================================================================
-    -- FSM Jeu
-    --
-    -- IDLE         : attend start_pulse
-    --                -> capture seed, lance MCU (reset_i vient d etre a 1 donc
-    --                   initialized=0, pas besoin de mcu_rst_s ici)
-    --
-    -- WAIT_MCU     : attend mcu_done -> demarre timer -> WAIT_RESPONSE
-    --
-    -- WAIT_RESPONSE: attend bonne reponse ou erreur/timeout
-    --                bonne reponse -> NEW_SEED
-    --                erreur        -> END_GAME
-    --
-    -- NEW_SEED     : pulse mcu_rst_s='1' 1 cycle (efface initialized dans MCU),
-    --                capture le LFSR courant dans seed_s,
-    --                puis mcu_start='1' le cycle suivant (WAIT_MCU)
-    --
-    -- END_GAME     : jeu fige
-    -- =========================================================================
     process(clk_i, reset_i)
     begin
         if reset_i = '1' then
@@ -327,9 +277,7 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- LED0 : resultat final
-    -- =========================================================================
+  
     process(state, score_s)
     begin
         if state = END_GAME then
@@ -345,9 +293,7 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Mapping sorties
-    -- =========================================================================
+  
     led    <= score_s;
     led3_r <= led_color_s(2);
     led3_g <= led_color_s(1);
