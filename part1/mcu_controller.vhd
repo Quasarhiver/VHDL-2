@@ -7,13 +7,11 @@ entity mcu_controller is
     Port (
         CLK      : in  STD_LOGIC;
         RESET    : in  STD_LOGIC;
-        START    : in  STD_LOGIC;                    -- Lance le calcul (front montant)
-        SEL_PROG : in  STD_LOGIC_VECTOR(1 downto 0); -- Sélection du programme
-        -- Sorties vers le datapath
+        START    : in  STD_LOGIC;                    
+        SEL_PROG : in  STD_LOGIC_VECTOR(1 downto 0); 
         SELFCT   : out STD_LOGIC_VECTOR(3 downto 0);
         SELROUTE : out STD_LOGIC_VECTOR(3 downto 0);
         SELOUT   : out STD_LOGIC_VECTOR(1 downto 0);
-        -- Indicateur fin de calcul
         DONE     : out STD_LOGIC
     );
 end mcu_controller;
