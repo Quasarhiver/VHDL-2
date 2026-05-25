@@ -1,19 +1,4 @@
--- =============================================================================
--- Module      : mcu_lfsr_program.vhd
--- Description : Sequenceur MCU dedie a la generation pseudo-aleatoire.
---               Le datapath reste cadence a 100 MHz, mais une nouvelle valeur
---               LFSR n'est demande qu'une fois par tick 1 kHz.
---
---               Le registre pseudo-aleatoire est stocke dans MEMCACHE1[3:0].
---               Au premier lancement apres reset, le sequenceur initialise
---               MEMCACHE1 a "1011" via A_IN, puis calcule l'etat suivant.
---               Aux lancements suivants, seule l'etape de mise a jour LFSR est
---               executee.
---
---               Convention retenue (X^4+X^3+1, decalage gauche) :
---               feedback = bit3 XOR bit2
---               next     = {bit2, bit1, bit0, feedback}
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -36,28 +21,7 @@ architecture Behavioral of mcu_lfsr_program is
     type rom_t is array (0 to 31) of STD_LOGIC_VECTOR(9 downto 0);
     type state_t is (IDLE, RUN, DONE_ST);
 
-    -- =========================================================================
-    -- Programme (15 instructions) :
-    -- feedback = bit3 XOR bit2 ; next = {bit2,bit1,bit0,feedback}
-    -- Algorithme : t1=state<<1 ; t2=state XOR t1 ; fb=t2>>3 ; next=t1 OR fb
-    --
-    --   [0]  BufA <- A_IN (seed)
-    --   [1]  MC1  <- A_IN                         (etat initial)
-    -- Boucle (LOOP_START=2) :
-    --   [2]  BufA <- MC1 ; prep SLA
-    --   [3]  MC2  <- SLA(MC1) = t1
-    --   [4]  BufA <- MC1                          (re-charger etat courant)
-    --   [5]  BufB <- MC2(t1)  ; prep XOR
-    --   [6]  MC1  <- state XOR t1 = t2
-    --   [7]  BufA <- MC1(t2)  ; prep SRA
-    --   [8]  BufA <- t2>>1    ; prep SRA
-    --   [9]  BufA <- t2>>2    ; prep SRA
-    --   [10] MC1  <- t2>>3 = fb (bit0 = feedback)
-    --   [11] BufA <- MC1(fb)
-    --   [12] BufB <- MC2(t1)  ; prep OR
-    --   [13] MC1  <- fb OR t1 = next
-    --   [14] RESOUT <- MC1 ; DONE
-    -- =========================================================================
+
     constant ROM : rom_t := (
         0  => "0001" & "0000" & "00",  -- BufA<-A_IN; prep S=A
         1  => "0000" & "0110" & "00",  -- MC1<-S (=seed)
@@ -99,9 +63,7 @@ begin
     SELOUT   <= instr(1 downto 0);
     DONE     <= done_r;
 
-    -- =========================================================================
-    -- Diviseur 100 MHz -> 1 kHz
-    -- =========================================================================
+
     process(CLK, RESET)
     begin
         if RESET = '1' then
@@ -118,12 +80,7 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Sequenceur :
-    -- - START demande une nouvelle valeur pseudo-aleatoire
-    -- - la demande est servie au prochain tick 1 kHz
-    -- - ensuite les instructions s'enchainent a 100 MHz, une seule fois chacune
-    -- =========================================================================
+
     process(CLK, RESET)
     begin
         if RESET = '1' then
