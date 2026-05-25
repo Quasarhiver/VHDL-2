@@ -1,28 +1,3 @@
--- =============================================================================
--- Module      : game_controller.vhd
--- Description : Contrôleur principal du jeu LogiGame.
---               FSM : IDLE → NEW_ROUND → WAIT_RESPONSE → END_GAME
---
---               IDLE         : Attente du bouton START (btn0)
---               NEW_ROUND    : Avance le LFSR, affiche la couleur sur LD3,
---                              lance le minuteur (1 cycle)
---               WAIT_RESPONSE: Attente de la réponse joueur ou timeout
---               END_GAME     : Jeu terminé, affichage score final sur led0 RGB
---
---               LED_COLOR (3 bits) : R=100 / G=010 / B=001
---               La couleur est dérivée du LFSR par un modulo 3 (cf. sujet) :
---                 rnd mod 3 = 0 → Rouge
---                 rnd mod 3 = 1 → Vert
---                 rnd mod 3 = 2 → Bleu
---
---               Led0 résultat final :
---                 Vert   : score = 15
---                 Orange : score ∈ [7,14]  (R+G)
---                 Rouge  : score ∈ [0,6]
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado / GHDL
--- Révision    : 1.0 – Avril 2026
--- =============================================================================
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -53,9 +28,6 @@ end game_controller;
 
 architecture Behavioral of game_controller is
 
-    -- =========================================================================
-    -- Composants
-    -- =========================================================================
     component lfsr4 is
         Port (
             CLK    : in  STD_LOGIC;
@@ -101,15 +73,11 @@ architecture Behavioral of game_controller is
         );
     end component;
 
-    -- =========================================================================
-    -- FSM
-    -- =========================================================================
+   
     type fsm_state is (IDLE, NEW_ROUND, WAIT_RESPONSE, END_GAME);
     signal state : fsm_state := IDLE;
 
-    -- =========================================================================
-    -- Signaux internes
-    -- =========================================================================
+  
     signal rnd_s       : STD_LOGIC_VECTOR(3 downto 0);
     signal lfsr_en     : STD_LOGIC := '0';
     signal timer_start : STD_LOGIC := '0';
@@ -125,9 +93,7 @@ architecture Behavioral of game_controller is
 
 begin
 
-    -- =========================================================================
-    -- Instanciations
-    -- =========================================================================
+ 
     U_LFSR : lfsr4
         port map (CLK => CLK, RESET => RESET, ENABLE => lfsr_en, RND => rnd_s);
 
@@ -146,16 +112,8 @@ begin
                   BTN_R => BTN_R, BTN_G => BTN_G, BTN_B => BTN_B,
                   VALID_HIT => valid_hit_s, ERROR => error_s);
 
-    -- =========================================================================
-    -- Dérivation couleur depuis le LFSR (corrige le biais M-3).
-    -- Le LFSR parcourt les 15 états non nuls 1..15. On découpe cet intervalle
-    -- en 3 plages de 5 valeurs : chaque couleur sort exactement 5 fois par
-    -- période de 15 -> distribution parfaitement uniforme (au lieu du précédent
-    -- rnd[1:0] qui donnait Rouge 2 fois plus souvent).
-    --   1..5   → Rouge (100)
-    --   6..10  → Vert  (010)
-    --   11..15 → Bleu  (001)
-    -- =========================================================================
+  
+   
     process(rnd_s)
     begin
         case to_integer(unsigned(rnd_s)) mod 3 is
@@ -165,9 +123,7 @@ begin
         end case;
     end process;
 
-    -- =========================================================================
-    -- FSM principale
-    -- =========================================================================
+
     process(CLK, RESET)
     begin
         if RESET = '1' then
@@ -232,16 +188,12 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Sorties LED stimulus LD3
-    -- =========================================================================
+    
     LED3_R <= led_color_r(2);
     LED3_G <= led_color_r(1);
     LED3_B <= led_color_r(0);
 
-    -- =========================================================================
-    -- Sortie LED résultat LED0 (actif seulement en END_GAME)
-    -- =========================================================================
+
     process(state, score_s)
         variable sc : unsigned(3 downto 0);
     begin
