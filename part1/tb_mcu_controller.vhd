@@ -1,13 +1,4 @@
--- =============================================================================
--- Module      : tb_mcu_controller.vhd
--- Description : Testbench du contrôleur MCU complet (datapath + controller).
---               Valide les 3 programmes avec A=3, B=2 :
---                 PROG0 : A*B = 6
---                 PROG1 : (A+B) XNOR A [3:0] = 9 (1001)
---                 PROG2 : (A0∧B1)∨(A1∧B0) bit0 = 1
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Simulation  : GHDL / Vivado Simulator
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -64,7 +55,7 @@ architecture Behavioral of tb_mcu_controller is
     signal sroutl_s   : STD_LOGIC;
     signal sroutr_s   : STD_LOGIC;
 
-    -- Timeout max (cycles)
+   
     constant MAX_CYCLES : integer := 100;
 
 begin
@@ -99,25 +90,21 @@ begin
             SROUTR   => sroutr_s
         );
 
-    -- =========================================================================
-    -- Processus de test principal
-    -- =========================================================================
+
     process
         variable cycle_count : integer;
     begin
         report "===== Début testbench MCU Controller =====" severity note;
         report "Test avec A=3 (sw=0011), B=3 (A=B sur carte)" severity note;
 
-        -- Reset initial
+        
         RESET_tb <= '1';
         START_tb <= '0';
         wait for 5 * CLK_PERIOD;
         RESET_tb <= '0';
         wait for 2 * CLK_PERIOD;
 
-        -- ==================================================================
-        -- PROGRAMME 0 : A * B = 3 * 3 = 9
-        -- ==================================================================
+        
         report "--- Programme 0 : A * B ---" severity note;
         SEL_PROG_tb <= "00";
         wait for CLK_PERIOD;
@@ -125,7 +112,7 @@ begin
         wait for CLK_PERIOD;
         START_tb <= '0';
 
-        -- Attente DONE
+    
         cycle_count := 0;
         while done_s = '0' and cycle_count < MAX_CYCLES loop
             wait for CLK_PERIOD;
@@ -142,10 +129,7 @@ begin
 
         wait for 2 * CLK_PERIOD;
 
-        -- ==================================================================
-        -- PROGRAMME 1 : (A+B) XNOR A  avec A=B=3
-        --   A+B=6=0110, XNOR A(0011): XOR(0110,0011)=0101, NOT=1010=10
-        -- ==================================================================
+       
         report "--- Programme 1 : (A+B) XNOR A ---" severity note;
         RESET_tb <= '1'; wait for 3*CLK_PERIOD; RESET_tb <= '0'; wait for 2*CLK_PERIOD;
         SEL_PROG_tb <= "01";
@@ -166,9 +150,6 @@ begin
 
         wait for 2 * CLK_PERIOD;
 
-        -- ==================================================================
-        -- PROGRAMME 2 : (A0∧B1)∨(A1∧B0)  avec A=B=3 (0011) → bit0=1
-        -- ==================================================================
         report "--- Programme 2 : (A0 and B1) or (A1 and B0) ---" severity note;
         RESET_tb <= '1'; wait for 3*CLK_PERIOD; RESET_tb <= '0'; wait for 2*CLK_PERIOD;
         SEL_PROG_tb <= "10";
