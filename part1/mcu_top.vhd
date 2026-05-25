@@ -67,7 +67,7 @@ architecture Behavioral of Arty_Digilent_TopLevel is
 begin
 
     clk_i      <= CLK100MHZ;
-    reset_i    <= btn(0);             -- btn0 = RESET
+    reset_i    <= btn(0);            
    
     start_i    <= btn(1) or btn(2) or btn(3);
     sel_prog_i <= "00" when btn(1) = '1' else
@@ -94,7 +94,7 @@ begin
             CLK      => clk_i,
             RESET    => reset_i,
             A_IN     => sw(3 downto 0),
-            B_IN     => sw(3 downto 0),   -- A = B sur la carte (mêmes switches)
+            B_IN     => sw(3 downto 0),  
             SRINL    => '0',
             SRINR    => '0',
             SELFCT   => selfct_i,
@@ -111,9 +111,9 @@ begin
     led2_r <= resout_i(6);
     led3_r <= resout_i(7);
 
-    led0_g <= done_i;     -- Vert : résultat disponible
-    led0_b <= sroutl_i;   -- Bleu : bit sortant gauche
-    led1_b <= sroutr_i;   -- Bleu : bit sortant droit
+    led0_g <= done_i;   
+    led0_b <= sroutl_i;  
+    led1_b <= sroutr_i; 
 
    
     led1_g <= '0';
