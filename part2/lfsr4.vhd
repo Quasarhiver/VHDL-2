@@ -1,26 +1,3 @@
--- =============================================================================
--- Module      : lfsr4.vhd
--- Description : Registre à décalage à rétroaction linéaire (LFSR) 4 bits.
---               Seed initial : "1011"
---               Fréquence de sortie : 1 kHz (diviseur 100 000 depuis CLK 100 MHz)
---               Un pulse ENABLE demande une seule avance du LFSR ; la demande
---               est mémorisée jusqu'au prochain tick 1 kHz.
---
---               Polynôme X^4 + X^3 + 1 : feedback = bit3 XOR bit2, décalage
---               vers la gauche → next = {bit2,bit1,bit0,feedback}.
---               Séquence de 15 états non nuls depuis seed "1011" :
---               1011→0111→1111→1110→1100→1000→0001→0010→
---               0100→1001→0011→0110→1101→1010→0101→(1011)
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado / GHDL
--- Révision    : 1.0 – Avril 2026
--- =============================================================================
--- Ports :
---   CLK    : horloge 100 MHz
---   RESET  : reset asynchrone actif haut → lfsr ← "1011"
---   ENABLE : active l'évolution du LFSR à 1 kHz
---   RND    : sortie pseudo-aléatoire 4 bits
--- =============================================================================
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -37,7 +14,7 @@ end lfsr4;
 
 architecture Behavioral of lfsr4 is
 
-    -- Diviseur de fréquence : 100 MHz / 1 kHz = 100 000
+   
     constant DIV_MAX : integer := 99999;
 
     signal lfsr_reg  : STD_LOGIC_VECTOR(3 downto 0) := "1011";
@@ -48,12 +25,10 @@ architecture Behavioral of lfsr4 is
 
 begin
 
-    -- Feedback LFSR : bit3 XOR bit2 (polynôme X^4+X^3+1), décalage gauche.
+   
     feedback <= lfsr_reg(3) xor lfsr_reg(2);
 
-    -- =========================================================================
-    -- Process diviseur de fréquence : génère tick_1khz
-    -- =========================================================================
+   
     process(CLK, RESET)
     begin
         if RESET = '1' then
@@ -70,11 +45,7 @@ begin
         end if;
     end process;
 
-    -- =========================================================================
-    -- Process LFSR : un pulse ENABLE arme une avance, consommée au prochain tick
-    -- 1 kHz. Cela garantit qu'une seule nouvelle valeur est produite par manche,
-    -- même si ENABLE n'est présent qu'un seul cycle à 100 MHz.
-    -- =========================================================================
+
     process(CLK, RESET)
     begin
         if RESET = '1' then
