@@ -1,22 +1,4 @@
--- =============================================================================
--- Module      : logigame_top.vhd  (Arty_Digilent_TopLevel – Partie 2)
--- Description : Top-level de la Partie 2 : jeu LogiGame sur Arty A7-35T.
---               Instancie le game_controller et mappe les ports physiques.
---
---               Mapping carte ARTY :
---                 CLK100MHZ       → CLK 100 MHz
---                 btn[0]          → RESET ; au relâchement, génération d'un START
---                 btn[1]          → BTN_B (réponse Bleu)
---                 btn[2]          → BTN_G (réponse Vert)
---                 btn[3]          → BTN_R (réponse Rouge)
---                 sw[3:2]         → SW_LEVEL (difficulté)
---                 led[3:0]        → Score courant
---                 led3_r/g/b      → Stimulus LD3 (R/G/B)
---                 led0_r/g/b      → Résultat final
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado
--- Révision    : 1.0 – Avril 2026
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -62,11 +44,7 @@ architecture Behavioral of Arty_Digilent_TopLevel is
 
 begin
 
-    -- =========================================================================
-    -- BTN0 sert à la fois de reset et de lancement :
-    -- - bouton appuyé   : reset actif
-    -- - bouton relâché  : génération d'un pulse START d'un cycle
-    -- =========================================================================
+
     process(CLK100MHZ)
     begin
         if rising_edge(CLK100MHZ) then
@@ -96,10 +74,10 @@ begin
             SCORE_OUT => score_s
         );
 
-    -- Score affiché sur les 4 LEDs standard (rouge)
+  
     led <= score_s;
 
-    -- LEDs inutilisées éteintes
+    
     led1_r <= '0'; led1_g <= '0'; led1_b <= '0';
     led2_r <= '0'; led2_g <= '0'; led2_b <= '0';
 
