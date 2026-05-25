@@ -1,17 +1,4 @@
--- =============================================================================
--- Module      : difficulty_timer.vhd
--- Description : Minuteur programmable pour la gestion de la difficulté du jeu.
---               4 niveaux sélectionnés par SW_LEVEL (2 bits) :
---                 "00" → 4s    (400 000 000 cycles à 100 MHz)
---                 "01" → 2s    (200 000 000 cycles)
---                 "10" → 1s    (100 000 000 cycles)
---                 "11" → 0.5s  ( 50 000 000 cycles)
---               Le signal TIMEOUT passe à '1' UNE SEULE FOIS à la fin du délai,
---               puis reste à '0' jusqu'à un nouveau START.
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- Cible       : Xilinx Artix-35T – Vivado / GHDL
--- Révision    : 1.0 – Avril 2026
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -29,9 +16,7 @@ end difficulty_timer;
 
 architecture Behavioral of difficulty_timer is
 
-    -- =========================================================================
-    -- Constantes de délai (cycles à 100 MHz)
-    -- =========================================================================
+   
     constant CYCLES_4S   : unsigned(28 downto 0) := to_unsigned(399_999_999, 29); -- 4s
     constant CYCLES_2S   : unsigned(28 downto 0) := to_unsigned(199_999_999, 29); -- 2s
     constant CYCLES_1S   : unsigned(28 downto 0) := to_unsigned( 99_999_999, 29); -- 1s
@@ -44,9 +29,7 @@ architecture Behavioral of difficulty_timer is
 
 begin
 
-    -- =========================================================================
-    -- Sélection de la limite en fonction du niveau de difficulté
-    -- =========================================================================
+    
     process(SW_LEVEL)
     begin
         case SW_LEVEL is
@@ -58,9 +41,7 @@ begin
         end case;
     end process;
 
-    -- =========================================================================
-    -- Process principal du minuteur
-    -- =========================================================================
+    
     process(CLK, RESET)
     begin
         if RESET = '1' then
