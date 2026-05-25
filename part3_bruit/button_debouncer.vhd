@@ -8,17 +8,17 @@ entity button_debouncer is
         DEBOUNCE_CYCLES : integer := 200000
     );
     Port (
-        CLK       : in  STD_LOGIC;   -- horloge 100 MHz
-        BTN_RAW   : in  STD_LOGIC;   -- entree bouton brute (asynchrone)
-        BTN_CLEAN : out STD_LOGIC    -- sortie synchronisee et anti-rebondie
+        CLK       : in  STD_LOGIC;   
+        BTN_RAW   : in  STD_LOGIC;  
+        BTN_CLEAN : out STD_LOGIC    
     );
 end button_debouncer;
 
 architecture Behavioral of button_debouncer is
 
-    signal sync_0  : STD_LOGIC := '0';   -- 1er etage de synchronisation
-    signal sync_1  : STD_LOGIC := '0';   -- 2e etage de synchronisation
-    signal clean_r : STD_LOGIC := '0';   -- sortie filtree
+    signal sync_0  : STD_LOGIC := '0';  
+    signal sync_1  : STD_LOGIC := '0';  
+    signal clean_r : STD_LOGIC := '0';  
     signal cnt     : integer range 0 to DEBOUNCE_CYCLES := 0;
 
    
