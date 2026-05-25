@@ -8,17 +8,13 @@ entity datapath is
     Port (
         CLK      : in  STD_LOGIC;
         RESET    : in  STD_LOGIC;
-        -- Entrées opérandes
         A_IN     : in  STD_LOGIC_VECTOR(3 downto 0);
         B_IN     : in  STD_LOGIC_VECTOR(3 downto 0);
-        -- Ports série
         SRINL    : in  STD_LOGIC;
         SRINR    : in  STD_LOGIC;
-        -- Contrôle
         SELFCT   : in  STD_LOGIC_VECTOR(3 downto 0);
         SELROUTE : in  STD_LOGIC_VECTOR(3 downto 0);
         SELOUT   : in  STD_LOGIC_VECTOR(1 downto 0);
-        -- Sorties
         RESOUT   : out STD_LOGIC_VECTOR(7 downto 0);
         SROUTL   : out STD_LOGIC;
         SROUTR   : out STD_LOGIC
