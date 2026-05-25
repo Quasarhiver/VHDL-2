@@ -1,13 +1,4 @@
--- =============================================================================
--- Module      : tb_game_controller.vhd
--- Description : Testbench du contrôleur de jeu LogiGame.
---               Simule : démarrage, réponse correcte, réponse incorrecte,
---               timeout et vérification du score final.
---               NOTE : Les délais du timer sont attendus (niveau 11 = 50M cycles).
---               Pour une simulation rapide, utiliser un fichier de stimuli
---               GTKWave et examiner les transitions d'états.
--- Auteur      : Projet LogiGame – TE608 EFREI 2025-2026
--- =============================================================================
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -38,7 +29,7 @@ architecture Behavioral of tb_game_controller is
     end component;
 
     constant CLK_P : time := 10 ns;
-    -- Période 1 kHz simulée (diviseur 100 000)
+  
     constant TICK_1KHZ : time := 1_000_000 ns;
 
     signal CLK_tb   : STD_LOGIC := '0';
@@ -66,9 +57,7 @@ begin
             SCORE_OUT => SCORE_tb
         );
 
-    -- =========================================================================
-    -- Processus : lecture du stimulus et injection de la bonne réponse
-    -- =========================================================================
+   
     process
         procedure press_correct_btn is
         begin
@@ -87,7 +76,7 @@ begin
 
         procedure press_wrong_btn is
         begin
-            -- Appuyer sur le mauvais bouton
+          
             if LED3_R_tb = '1' then
                 report "Stimulus: ROUGE -> MAUVAIS appui BTN_G" severity note;
                 BTNG_tb <= '1'; wait for 5*CLK_P; BTNG_tb <= '0';
@@ -100,18 +89,17 @@ begin
     begin
         report "===== Testbench Game Controller =====" severity note;
 
-        -- Reset initial
+    
         RESET_tb <= '1'; wait for 5*CLK_P; RESET_tb <= '0'; wait for 5*CLK_P;
 
-        -- Démarrage du jeu
+      
         report "--- Démarrage du jeu ---" severity note;
         START_tb <= '1'; wait for CLK_P; START_tb <= '0';
 
-        -- Attendre que le LFSR avance (1 tick 1kHz)
+       
         wait for TICK_1KHZ + 10*CLK_P;
         wait for 2 ns;
 
-        -- Score doit être 0 au départ
         assert to_integer(unsigned(SCORE_tb)) = 0
             report "FAIL: score initial != 0" severity error;
         report "Score initial = " & integer'image(to_integer(unsigned(SCORE_tb))) severity note;
@@ -119,7 +107,6 @@ begin
                " G=" & std_logic'image(LED3_G_tb) &
                " B=" & std_logic'image(LED3_B_tb) severity note;
 
-        -- Round 1 : Bonne réponse
         press_correct_btn;
         wait for 2*TICK_1KHZ + 20*CLK_P;
         wait for 2 ns;
@@ -128,7 +115,7 @@ begin
         assert to_integer(unsigned(SCORE_tb)) = 1
             report "FAIL: score attendu 1" severity error;
 
-        -- Round 2 : Bonne réponse
+
         press_correct_btn;
         wait for 2*TICK_1KHZ + 20*CLK_P;
         wait for 2 ns;
@@ -137,18 +124,18 @@ begin
         report "Score après round 2 = " & integer'image(to_integer(unsigned(SCORE_tb))) &
                " (attendu 2)" severity note;
 
-        -- Round 3 : Mauvaise réponse -> GAME_OVER
+        
         report "--- Mauvaise réponse (fin de partie attendue) ---" severity note;
         press_wrong_btn;
         wait for 3*CLK_P;
         wait for 2 ns;
 
-        -- Vérification affichage LED0 (score 2 -> rouge)
+       
         report "LED0 résultat: R=" & std_logic'image(LED0_R_tb) &
                " G=" & std_logic'image(LED0_G_tb) &
                " B=" & std_logic'image(LED0_B_tb) & " (score=2, attendu rouge)" severity note;
 
-        -- Redémarrage
+   
         report "--- Redémarrage ---" severity note;
         wait for 5*CLK_P;
         START_tb <= '1'; wait for CLK_P; START_tb <= '0';
